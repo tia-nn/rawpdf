@@ -1,0 +1,40 @@
+# PRやIssueのコメントで @claude と書くと、Claudeが返信する（再レビュー・質問用）。
+# 呼び出せるのはリポジトリへの書き込み権限を持つユーザーだけ（action側の既定の制限）。
+# コードの変更・コミットはさせない（contents: read、Edit/Writeを禁止）。
+name: Claude Mention
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  respond:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Respond with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          classify_inline_comments: "false"
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Bash(gh issue comment:*),Read,Glob,Grep"
+            --disallowedTools "Edit,Write,NotebookEdit"
+            --append-system-prompt "このリポジトリではコードはユーザー本人が書く。コードの変更・コミットはせず、CLAUDE.mdの進め方に従って説明・ヒント・レビューで応える。再レビューを頼まれたら「PRレビュー」節に従う。"

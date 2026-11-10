@@ -1,0 +1,45 @@
+# PRを開いた（またはDraftを外した）ときに、Claudeが自動でレビューする。
+# レビューの観点・書き方はCLAUDE.mdの「PRレビュー」節に従う。
+# コードの変更・コミットはさせない（contents: read、Edit/Writeを禁止）。
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+
+jobs:
+  review:
+    # Draftは対象外。フォークからのPRはSecretが渡らないため対象外
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Review with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # インラインコメントを溜めて分類する機能はAPIキー認証が前提のため無効にする
+          classify_inline_comments: "false"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            このPRをレビューしてください。観点・書き方・してはいけないことは、
+            リポジトリのCLAUDE.mdの「PRレビュー」節に従ってください。
+
+            - 差分は `gh pr diff` で、PRの説明は `gh pr view` で確認する
+            - 特定の行に対する指摘はインラインコメントで付ける
+            - 全体のまとめは `gh pr comment` で1件だけ投稿する
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep"
+            --disallowedTools "Edit,Write,NotebookEdit"
