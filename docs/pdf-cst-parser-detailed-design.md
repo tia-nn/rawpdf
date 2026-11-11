@@ -1,10 +1,37 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-12（実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
-用途: 実装直前の詳細設計。モジュール構成・TS型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。
+用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
-**前提決定**: Green木はobject-per-node表現（メモリ10倍目標超過が実測されたらSoAへ内部差し替え）／RedビューはクラスベースAPI／ツールチェーンはvitest + tsc + ESM only（統括ドキュメント3章）。
+**前提決定**: Green木はobject-per-node表現（メモリ10倍目標超過が実測されたらSoAへ内部差し替え）／RedビューはクラスベースAPI／実装言語はターゲット非依存の純Haxe、テストはutest（統括ドキュメント3章・3.1節）。
+
+---
+
+## 0. 型表記の読み替え（Haxe）
+
+本ドキュメントと意味解析詳細設計の型定義・シグネチャは、TS時代に書いたものを**言語中立の擬似表記**として残している（統括3.1節）。Haxeで実装するときは次の規則で読み替える。読み替えで設計の意図が変わる箇所（下表の「注意」）は、実装時に該当節を見直す。
+
+| 擬似表記（TS風） | Haxe | 注意 |
+|---|---|---|
+| 数値constオブジェクト＋union（`SyntaxKind`） | `enum abstract SyntaxKind(Int)` | 実行時は`Int`のまま。分類ヘルパ（`isTrivia`等）は`enum abstract`のメソッドにできる |
+| 文字列リテラルのunion（診断コード、`'page' \| 'pages'`等） | `enum abstract X(String)` | |
+| 判別共用体（`{ type: 'ref', ... } \| ...`。`PdfValue`等） | `enum`（代数的データ型）＋`switch`のパターンマッチ | 網羅性をコンパイラが検査する |
+| `interface`（データの形） | `typedef`の構造型、または`@:structInit class` | 生成数が多い型（トークン等）は`class`の方が速い（JSで形が固定されるため） |
+| `class` | `class` | |
+| `readonly`フィールド | `final` | |
+| `readonly T[]` | `haxe.ds.ReadOnlyArray<T>` | |
+| `T \| null`、`x?: T` | `Null<T>`、`?x:T` | |
+| `Uint8Array` | `haxe.io.Bytes` | 部分範囲は`(bytes, start, length)`の組で渡し、コピー（`sub`）を避ける |
+| `number`（オフセット・長さ・個数・インデックス） | `Int` | **`Int`は32ビット**。ファイルサイズ2GiB未満を前提とする（10章に記録） |
+| `number`（PDFのInteger/Realの値） | `Float` | PDFのIntegerは10桁（xrefのオフセット等）があり得るため`Int`に入れない。意味解析詳細設計8.1節 |
+| `IterableIterator<T>` | `Iterator<T>` | |
+| `Map<K, V>` | `Map<K, V>` | キーがオブジェクトなら`haxe.ds.ObjectMap`になる |
+| `WeakMap<K, V>` | **対応なし** | `haxe.ds.WeakMap`はJSターゲットで使えない。意味解析詳細設計8.2節の代替を参照 |
+| `===`（参照の同一性） | `==`（クラスのインスタンスは参照比較） | `GreenNode`の「変更なし」判定（4章）はこれで行う |
+| `export function f()` | モジュールレベル関数（Haxe 4.2以降）または`static`関数 | |
+| `() => T` | `() -> T` | |
+| ファイル`kind.ts` | モジュール`SyntaxKind.hx`等 | 2章の対応表 |
 
 ---
 
@@ -22,37 +49,41 @@
 
 ```
 packages/pdf-cst-parser/
-├── src/
+├── src/rawpdf/cst/                  … Haxeのパッケージ rawpdf.cst（ターゲット非依存の純Haxe）
 │   ├── syntax/
-│   │   ├── kind.ts        … SyntaxKind定義・分類ヘルパ
-│   │   ├── green.ts       … Green木（不変・相対長）
-│   │   ├── red.ts         … Redビュー（SyntaxTree/Node/Token）
-│   │   └── builder.ts     … GreenBuilder（イベント型構築）
+│   │   ├── SyntaxKind.hx  … SyntaxKind定義・分類ヘルパ          （旧 kind.ts）
+│   │   ├── Green.hx       … Green木（不変・相対長）              （旧 green.ts）
+│   │   ├── Red.hx         … Redビュー（SyntaxTree/Node/Token）    （旧 red.ts）
+│   │   └── GreenBuilder.hx … GreenBuilder（イベント型構築）      （旧 builder.ts）
 │   ├── lex/
-│   │   ├── byte-class.ts  … バイト分類テーブル
-│   │   ├── lexer.ts       … トークナイザ本体
-│   │   ├── stream-boundary.ts … endstream探索
-│   │   └── token-source.ts … トリビア吸着・先読みバッファ
+│   │   ├── ByteClass.hx   … バイト分類テーブル                   （旧 byte-class.ts）
+│   │   ├── Lexer.hx       … トークナイザ本体                     （旧 lexer.ts）
+│   │   ├── StreamBoundary.hx … endstream探索                    （旧 stream-boundary.ts）
+│   │   └── TokenSource.hx … トリビア吸着・先読みバッファ         （旧 token-source.ts）
 │   ├── parse/
-│   │   ├── parser.ts      … 再帰下降本体
-│   │   ├── recovery.ts    … 同期スタック・エラー回復
-│   │   └── reparse.ts     … インクリメンタル再パース
-│   ├── diagnostics.ts     … Diagnostic型・コード定義
-│   ├── dump.ts            … CSTテキストダンプ
-│   ├── cli.ts             … dump CLI（bin: pdf-cst-dump）
-│   └── index.ts           … 公開APIの再エクスポート
-├── tests/                 … vitest（unit / snapshot / property）
-├── package.json           … "type": "module", exports: "./dist/index.js"
-└── tsconfig.json          … strict, ES2022, moduleResolution: bundler相当
+│   │   ├── Parser.hx      … 再帰下降本体                         （旧 parser.ts）
+│   │   ├── Recovery.hx    … 同期スタック・エラー回復             （旧 recovery.ts）
+│   │   └── Reparse.hx     … インクリメンタル再パース             （旧 reparse.ts）
+│   ├── Diagnostics.hx     … Diagnostic型・コード定義             （旧 diagnostics.ts）
+│   ├── Dump.hx            … CSTテキストダンプ                    （旧 dump.ts）
+│   └── Cst.hx             … 公開APIの入口                        （旧 index.ts）
+├── cli/                   … dump CLI（Node向け。ファイル読み込みのため`js.*`/hxnodejsを使ってよい層。旧 cli.ts）
+├── tests/                 … utest（unit / snapshot / property）
+├── haxelib.json           … ライブラリ定義（classPath: src。依存なし）
+├── build.hxml             … 型検査用（全モジュールをコンパイル）
+├── test.hxml              … テスト（Nodeターゲット。evalでも回せるようにする）
+└── cli.hxml               … CLI（JSに出力。bin: pdf-cst-dump）
 ```
 
-依存: ランタイム依存ゼロ。devDependenciesのみ（vitest, fast-check, typescript）。
+本文中で`syntax/kind.ts`のようにTS時代のファイル名で書いている箇所は、この表の対応するHaxeモジュールを指す。
+
+依存: ランタイム依存ゼロ（`src/`はHaxe標準ライブラリのみ）。開発時の依存はutestと、CLIのためのhxnodejs（lixで固定。統括3章）。
 
 ---
 
 ## 3. SyntaxKind定義（`syntax/kind.ts`）
 
-`const enum`は使わず、数値リテラル型のconstオブジェクト＋union型で定義する（ESM・ツール互換性のため）。
+Haxeでは`enum abstract SyntaxKind(Int)`として定義する（0章）。以下はTS時代の擬似表記で、値の割り当てと分類ヘルパの仕様はそのまま有効である。
 
 ```ts
 export const SyntaxKind = {
@@ -449,15 +480,19 @@ Document@0..120
 
 ```
 tests/
-├── lexer.test.ts          … トークン単位のunit
-├── snapshot/              … corpus/ の各ファイル → dumpCst をスナップショット比較
-├── reparse.test.ts        … 「reparse結果 === フルパース結果」の等価性検証（最重要プロパティ）
-├── property.test.ts       … fast-check（ランダムバイト列でクラッシュなし・幅不変条件成立）
-└── bench/                 … vitest bench: フルパース／単一オブジェクト編集reparse
+├── LexerTest.hx           … トークン単位のunit（utest）
+├── SnapshotTest.hx        … corpus/ の各ファイル → dumpCst をスナップショット比較
+├── __snapshots__/         … スナップショットの保存先（更新はフラグ付きで実行したときだけ）
+├── ReparseTest.hx         … 「reparse結果 === フルパース結果」の等価性検証（最重要プロパティ）
+├── PropertyTest.hx        … ランダムバイト列でクラッシュなし・幅不変条件成立
+├── support/               … 自作のテストヘルパー（スナップショット比較、ランダム入力の生成器）
+└── bench/                 … フルパース／単一オブジェクト編集reparseの計時（Nodeターゲット）
 ```
 
 - reparse等価性（`dumpCst(reparse(t, e)) === dumpCst(parse(splice(bytes, e)))`）をランダム編集で回すことをプロパティテストの柱とする。
-- カバレッジガイド付きファジング（Jazzer.js）はM6で導入（基本設計9章）。
+- スナップショット比較とランダム入力の生成器は自作する（統括3章）。最低限の機能: 生成器はシード値を指定して再現でき、失敗時にシード値と入力を報告する。失敗した入力を小さくする縮小（shrinking）は、必要になってから足す。
+- テストはNodeターゲットで実行することを正とする（本番と同じ実行環境）。開発中はevalターゲット（`--interp`）でも回せるようにしておく。
+- カバレッジガイド付きファジング（Jazzer.js）はM6で導入（基本設計9章）。Haxeが出力したJSに対してハーネスを書く。
 
 **実装マイルストーン**: M1 Green/Red＋Lexer＋dump＋スナップショット基盤 → M2 object文法（dict/array/値・Reference先読み） → M3 StreamClause＋境界探索 → M4 xref/trailer/Segment＋エラー回復一式 → M5 reparse → M6 ファジング・ベンチ・診断仕上げ。各M完了時点でスナップショットが常にグリーンであることを維持する。
 
@@ -468,5 +503,6 @@ tests/
 - `MAX_NEST_DEPTH = 64`の妥当性（実PDFコーパスでの最大ネスト実測後に調整。公開オプション化はしない）
 - `TokenSource`のリングバッファ枠数（先読み最大3で足りる想定。Reference判定の詳細次第で+1）
 - xref-entry-malformedの検査をどこまで細分した診断メッセージにするか
-- Boyer-Moore-Horspool fallbackの要否（v1がNode専用で進むなら`Buffer.indexOf`のみで開始してよい）
+- `findEndstream`の探索実装。純HaxeのBoyer-Moore-Horspoolで開始し、M6のベンチマークで予算（基本設計2.3.1節）に届かなければ、この関数の中だけJSターゲット向けに`Buffer.indexOf`へ条件コンパイルで切り替える（基本設計4.3節）
+- `Int`が32ビットであることによる、ファイルサイズ2GiB未満という前提（0章）。超えるファイルは開く時点で拒否する（LSP層）か、オフセット型を変えるかは、必要になったら決める
 - dumpのトークン内容表示の打ち切り長（32バイト仮置き）

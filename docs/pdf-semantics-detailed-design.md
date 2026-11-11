@@ -1,10 +1,10 @@
 # PDF意味解析 詳細設計ドキュメント
 
-最終更新: 2026-11-11（レビュー指摘を反映: Greenキーのキャッシュに Redノードを入れない規則（8.1・8.2節）。`DictView`の内部Mapを子インデックス方式に変更）
+最終更新: 2026-11-12（実装言語をHaxeに変更: 2章・8.1節・8.2節・11章・12章）。2026-11-11（レビュー指摘を反映: Greenキーのキャッシュに Redノードを入れない規則（8.1・8.2節）。`DictView`の内部Mapを子インデックス方式に変更）
 上位ドキュメント: `pdf-semantics-design.md`（基本設計。スコープ・責務分担はそちらが正）
-用途: 実装直前の詳細設計。モジュール構成・TS型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（パーサ詳細設計と同じ粒度）。
+用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（パーサ詳細設計と同じ粒度）。型定義とシグネチャはTS風の擬似表記で書き、Haxeへの読み替えはパーサ詳細設計0章の規則に従う。
 
-**前提決定**: クラスベースAPI・vitest + tsc + ESM only（統括ドキュメント3章、パーサ詳細設計と共通）。本詳細設計での新規決定: 型付きビュー層（`DictView`等）をv1公開APIに含める／逆参照インデックスをLSP層から本パッケージへ移管／`/Encrypt`検出時は文字列のテキスト解釈を抑制する。
+**前提決定**: クラスベースAPI・ターゲット非依存の純Haxe・utest（統括ドキュメント3章・3.1節、パーサ詳細設計と共通）。本詳細設計での新規決定: 型付きビュー層（`DictView`等）をv1公開APIに含める／逆参照インデックスをLSP層から本パッケージへ移管／`/Encrypt`検出時は文字列のテキスト解釈を抑制する。
 
 ---
 
@@ -20,25 +20,28 @@
 
 ```
 packages/pdf-semantics/
-├── src/
-│   ├── model.ts           … SemanticModel・analyze/update
-│   ├── object-index.ts    … 論理インデックス・xref突き合わせ
-│   ├── resolve.ts         … 参照解決・逆参照インデックス
-│   ├── revisions.ts       … リビジョンモデル・/Prevチェーン検証
-│   ├── graph.ts           … 文書構造グラフ（catalog/page tree）
+├── src/rawpdf/semantics/            … Haxeのパッケージ rawpdf.semantics（ターゲット非依存の純Haxe）
+│   ├── SemanticModel.hx   … SemanticModel・analyze/update          （旧 model.ts）
+│   ├── ObjectIndex.hx     … 論理インデックス・xref突き合わせ       （旧 object-index.ts）
+│   ├── Resolve.hx         … 参照解決・逆参照インデックス           （旧 resolve.ts）
+│   ├── Revisions.hx       … リビジョンモデル・/Prevチェーン検証    （旧 revisions.ts）
+│   ├── Graph.hx           … 文書構造グラフ（catalog/page tree）    （旧 graph.ts）
 │   ├── decode/
-│   │   ├── name.ts        … Name #xxデコード
-│   │   ├── string.ts      … literal/hex stringデコード・テキスト解釈
-│   │   └── number.ts      … Integer/Real → number
+│   │   ├── NameDecode.hx  … Name #xxデコード                      （旧 name.ts）
+│   │   ├── StringDecode.hx … literal/hex stringデコード・テキスト解釈（旧 string.ts）
+│   │   └── NumberDecode.hx … Integer/Real → Float                 （旧 number.ts）
 │   ├── typed/
-│   │   ├── value.ts       … PdfValue union・valueOf()
-│   │   └── views.ts       … DictView / ArrayView
-│   ├── length-check.ts    … /Length不一致検証
-│   ├── diagnostics.ts     … 意味診断コード定義（Diagnostic型はparserを再利用）
-│   └── index.ts
-├── tests/
-└── package.json           … 依存: pdf-cst-parser のみ
+│   │   ├── PdfValue.hx    … PdfValue（Haxeのenum）・valueOf()      （旧 value.ts）
+│   │   └── Views.hx       … DictView / ArrayView                   （旧 views.ts）
+│   ├── LengthCheck.hx     … /Length不一致検証                      （旧 length-check.ts）
+│   ├── SemanticDiagnostics.hx … 意味診断コード定義（Diagnostic型はparserを再利用。旧 diagnostics.ts）
+│   └── Semantics.hx       … 公開APIの入口                          （旧 index.ts）
+├── tests/                 … utest
+├── haxelib.json           … 依存: pdf-cst-parser のみ
+└── test.hxml              … クラスパスは自分のsrcとpdf-cst-parserのsrcのみ（統括3章の依存方向の強制）
 ```
+
+本文中のTS時代のファイル名（`decode/string.ts`等）は、この表の対応するHaxeモジュールを指す。
 
 ---
 
@@ -234,7 +237,8 @@ export function decodeReal(token: SyntaxToken): DecodedNumber;
 - **LiteralString**: `\n \r \t \b \f \( \) \\`、8進`\ddd`（1〜3桁）、`\`+実EOL（行継続、消える）、未定義エスケープは`\`を落とし後続バイトをそのまま。ネスト括弧はバイトとして保持。
 - **HexString**: whitespace除去→16進ペア化。奇数桁は末尾`0`補い。非16進バイトは読み飛ばして`string-invalid-hex`診断対象としてマーク。
 - **テキスト解釈**: `encrypted`なら常に`suppressed`。それ以外はUTF-16BE BOM（FE FF）→ UTF-8 BOM（EF BB BF）→ PDFDocEncoding（変換テーブルを`string.ts`に内蔵）の順。
-- **キャッシュ**: bytesレベルのデコード結果をWeakMapに載せる。`text`は文字列長が小さいため都度計算（`encrypted`フラグでキャッシュを分けない）。
+- **キャッシュ**: bytesレベルのデコード結果をWeakMapに載せる。`text`は文字列長が小さいため都度計算（`encrypted`フラグでキャッシュを分けない）。HaxeではWeakMapがJSターゲットで使えないため、実現方法は12章の未決定事項とする（パーサ詳細設計0章）。
+- **数値**: `DecodedNumber.value`はHaxeでは`Float`とする。PDFのIntegerは10桁（xrefのオフセット等）があり得て、32ビットの`Int`に収まらないため（パーサ詳細設計0章）。`Float`で正確に表せない桁数（2^53超）の場合に`precisionLoss: true`とする。
 
 ### 8.2 PdfValueと型付きビュー
 
@@ -323,15 +327,17 @@ export function dumpSemantics(model: SemanticModel): string;
 
 ```
 tests/
-├── object-index.test.ts   … unit（重複・後勝ち・xref突き合わせ）
-├── resolve.test.ts        … unit（genフォールバック・dangling）
-├── decode.test.ts         … unit + fast-checkプロパティ（往復性）
-├── snapshot/              … corpus/ → dumpSemantics スナップショット
-├── update.test.ts         … 「update結果 === 新規analyze結果」等価性（ランダム編集）
-└── bench/                 … eager部分の構築時間 vs オブジェクト数（超過ライン計測。基本設計6章）
+├── ObjectIndexTest.hx     … unit（重複・後勝ち・xref突き合わせ）
+├── ResolveTest.hx         … unit（genフォールバック・dangling）
+├── DecodeTest.hx          … unit + プロパティ（往復性。生成器はパーサのテストヘルパーを共用）
+├── SnapshotTest.hx        … corpus/ → dumpSemantics スナップショット
+├── UpdateTest.hx          … 「update結果 === 新規analyze結果」等価性（ランダム編集）
+└── bench/                 … eager部分の構築時間 vs オブジェクト数（超過ライン計測。基本設計6章。Nodeターゲット）
 ```
 
-パーサと同じく「破損コーパスで例外ゼロ」をファジング目標とする（Jazzer.jsはパーサ経由で本パッケージまで貫通させる）。
+パーサと同じく「破損コーパスで例外ゼロ」をファジング目標とする（Jazzer.jsはパーサ経由で本パッケージまで貫通させる。ハーネスはHaxeが出力したJSに対して書く）。
+
+テストヘルパー（スナップショット比較・生成器）は、パーサの`tests/support/`をテスト用のクラスパスに追加して共用する（テストのクラスパスだけに入れるので、`src/`の依存方向には影響しない）。
 
 **実装マイルストーン**: S1 ObjectIndex＋Revision骨格＋dump → S2 decode一式＋typed views → S3 resolve＋逆参照＋documentGraph → S4 length検証＋診断集約 → S5 プロパティテスト・ベンチ・ファジング統合。
 
@@ -344,3 +350,4 @@ tests/
 - `visibleObjectsAt`のメモ化を全リビジョン分持つか、直近アクセスのみか
 - `update`の差分化（基本設計8章）着手時の、逆参照インデックス・graphの部分無効化の設計
 - `startxref-mismatch`・`xref-entry-orphan`・`xref-free-object-defined`のseverity（暫定warning）
+- **WeakMapの代替**（8.1節・8.2節。Haxe化で発生）: Greenノード／トークンをキーとする世代をまたぐキャッシュは、HaxeのJSターゲットに`WeakMap`が無いため、別の方法で実現する。候補は次の3つ。(a) パーサのGreenに、上位層が使う不透明なキャッシュ枠（`Null<Any>`）を1つ持たせる（パーサが意味解析の型を知らずに済み、Greenと一緒に回収される。ただしGreenが「完全に不変」ではなくなる）。(b) 世代ごとの`ObjectMap`を次の世代へ引き継ぎ、`update`のたびに新しい木で到達できなくなったキーを捨てる（掃除のコストが編集ごとにかかる）。(c) キャッシュの1か所だけ、JSターゲット向けに`js.lib.WeakMap`へ条件コンパイルする（統括3章のターゲット非依存の原則の例外を増やす）。いずれもS2着手時に決める。(a)を選ぶ場合は、パーサ詳細設計4章の`GreenNode`/`GreenToken`の定義に枠を追加する

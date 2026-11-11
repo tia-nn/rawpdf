@@ -69,15 +69,21 @@ PRを開いたとき（Draftを外したとき）に、GitHub Actions（`.github
 
 ## 技術スタック
 
-- TypeScript（strict）、Node.js、ESMのみ
-- pnpm workspaces（`packages/pdf-cst-parser`・`packages/pdf-semantics`・`packages/pdf-lsp-editor`）
-- テスト: vitest（スナップショット・bench含む）、プロパティテスト: fast-check、ファジング: Jazzer.js
-- ビルド: tscのみ
-- 依存方向は下位方向の一方向のみ（parser ← semantics ← lsp-editor。lsp-editorはparserにも直接依存してよい）。逆方向のimportは禁止
+詳細と決定の経緯は統括設計3章・3.1節（2026-11-12にTSからHaxeへ変更）。
+
+- **Haxe 4.3.7**（lixで固定）: `packages/pdf-cst-parser`・`packages/pdf-semantics`・`packages/pdf-lsp-editor/server`
+  - parser・semanticsと、サーバーの投影層・LSPロジックは**ターゲット非依存の純Haxe**で書く。`js.*`・`untyped`・`#if js`は、サーバーのI/O層と、設計書で明示的に許可した関数（パーサ基本4.3節の探索）だけ
+  - サーバーはJSに出力してNode上で動かす（vshaxeの`language-server-protocol-haxe`・`vscode-json-rpc`）
+- **TypeScript**: `packages/pdf-lsp-editor/client`（VS Code拡張の薄いクライアント）だけ。Haxeのコードはimportしない。パース結果が必要な処理はカスタムリクエストでサーバーに委譲する（LSP設計3.5節）
+- npmの道具（lix・Jazzer.js・クライアント・VSIXのパッケージング）はルートのpnpm workspaceで管理する
+- テスト: utest。スナップショット比較とプロパティテストの生成器は自作する。Nodeターゲットで回すのが正で、evalでも回せるようにしておく。ファジングは出力JSに対するJazzer.js
+- 詳細設計の型・シグネチャはTS風の擬似表記。Haxeへの読み替えはパーサ詳細設計0章（`Int`は32ビット、`WeakMap`は無い、などの注意点を含む）
+- 依存方向は下位方向の一方向のみ（parser ← semantics ← lsp-editor。lsp-editorはparserにも直接依存してよい）。逆方向のimportは禁止で、各`.hxml`のクラスパスで強制する
 
 ## 現在地
 
 - フェーズ0（VS Code統合の垂直スパイク）は完了・判定go（2026-11-10）
-- 次は`pdf-cst-parser`の実装。作業分解と進捗は`docs/wbs.md`にある。M0（リポジトリ基盤）から始める
+- 実装言語をHaxeに変更した（2026-11-12）。TSで始めていたM0の作業は`git stash`に退避してある（`M0: TS setup (before switching to Haxe)`）
+- 次は`pdf-cst-parser`の実装。作業分解と進捗は`docs/wbs.md`にある。M0（リポジトリ基盤。Haxe用に組み直したもの）から始める
 - WBSのタスクを完了したら`docs/wbs.md`のチェックを付け、この節の「次」を更新する
 - WBSはタスク単位まで。タスクの中の手順はユーザーが自分で決める（求められたらレビューする）
