@@ -9,10 +9,12 @@ on:
 
 jobs:
   review:
-    # Draftは対象外。フォークからのPRはSecretが渡らないため対象外
+    # Draftは対象外。フォークからのPRはSecretが渡らないため対象外。
+    # PRのタイトルか本文に [skip review] があれば対象外（@claude での手動レビューは可能）
     if: |
       github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(format('{0} {1}', github.event.pull_request.title, github.event.pull_request.body), '[skip review]')
     runs-on: ubuntu-latest
     permissions:
       contents: read

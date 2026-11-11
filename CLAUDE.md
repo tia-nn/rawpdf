@@ -22,7 +22,7 @@ PDFのバイト列を「テキストとして手で書く」ためのエディ�
 
 ## PRレビュー
 
-PRを開いたとき（Draftを外したとき）に、GitHub Actions（`.github/workflows/claude-review.yml`）でClaudeが自動レビューする。修正後の再レビューや質問は、PRに`@claude`とコメントして頼む（`claude-mention.yml`）。作業の流れは「WBSのタスク1つ＝ブランチ1本＝PR1本」を基本とする。
+PRを開いたとき（Draftを外したとき）に、GitHub Actions（`.github/workflows/claude-review.yml`）でClaudeが自動レビューする。修正後の再レビューや質問は、PRに`@claude`とコメントして頼む（`claude-mention.yml`）。作業の流れは「WBSのタスク1つ＝ブランチ1本＝PR1本」を基本とする。自動レビューが不要なPR（typo修正など）は、タイトルか本文に`[skip review]`と書くと自動レビューされない（`@claude`での手動レビューは引き続き可能）。
 
 レビューで見る観点（重要度順）:
 
