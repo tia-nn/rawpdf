@@ -20,12 +20,12 @@
 ## M0 リポジトリ基盤
 
 - [ ] **M0-1 lixとパーサパッケージの雛形**
-  - 完了条件: ルートのpnpm workspaceにlixを入れ、`.haxerc`でHaxe 4.3.7を固定する。utestとhxnodejsを`haxe_libraries/`に固定する。`packages/pdf-cst-parser`に`haxelib.json`・`build.hxml`・`test.hxml`を置き、utestのダミーテスト1本がNodeターゲットで通る（ルートの`pnpm test`から実行できる）。同じテストがevalターゲット（`--interp`）でも通る
+  - 完了条件: ルートの`package.json`（npm workspaces）にlixを入れ、`.haxerc`でHaxe 4.3.7を固定する。utestとhxnodejsを`haxe_libraries/`に固定する。`packages/pdf-cst-parser`に`haxelib.json`・`build.hxml`・`test.hxml`を置き、utestのダミーテスト1本がNodeターゲットで通る（ルートの`npm test`から実行できる）。npm経由（`npx haxe`）でも`.haxerc`の版が使われることを確かめる。同じテストがevalターゲット（`--interp`）でも通る
   - 前提: なし
   - 参照: 統括3章・3.1節、詳細2章
   - 新しい概念: lix（Haxeのバージョンとライブラリの固定）、`.hxml`とクラスパス、Haxeのターゲット（js / eval）
 - [ ] **M0-2 最小のCI**
-  - 完了条件: GitHub Actionsでpush時にinstall（pnpmとlix）・build・testが走り、グリーンになる
+  - 完了条件: GitHub Actionsでpush時にinstall（npmとlix）・build・testが走り、グリーンになる
   - 前提: M0-1
   - 参照: 統括3章・8章（CIの詳細は未決定。最小構成で始める）
   - 新しい概念: GitHub Actions

@@ -75,7 +75,7 @@ PRを開いたとき（Draftを外したとき）に、GitHub Actions（`.github
   - parser・semanticsと、サーバーの投影層・LSPロジックは**ターゲット非依存の純Haxe**で書く。`js.*`・`untyped`・`#if js`は、サーバーのI/O層と、設計書で明示的に許可した関数（パーサ基本4.3節の探索）だけ
   - サーバーはJSに出力してNode上で動かす（vshaxeの`language-server-protocol-haxe`・`vscode-json-rpc`）
 - **TypeScript**: `packages/pdf-lsp-editor/client`（VS Code拡張の薄いクライアント）だけ。Haxeのコードはimportしない。パース結果が必要な処理はカスタムリクエストでサーバーに委譲する（LSP設計3.5節）
-- npmの道具（lix・Jazzer.js・クライアント・VSIXのパッケージング）はルートのpnpm workspaceで管理する
+- npmの道具（lix・Jazzer.js・クライアント・VSIXのパッケージング）は、Node.js付属のnpm（workspaces）で管理する。pnpmは使わない
 - テスト: utest。スナップショット比較とプロパティテストの生成器は自作する。Nodeターゲットで回すのが正で、evalでも回せるようにしておく。ファジングは出力JSに対するJazzer.js
 - 詳細設計の型・シグネチャはTS風の擬似表記。Haxeへの読み替えはパーサ詳細設計0章（`Int`は32ビット、`WeakMap`は無い、などの注意点を含む）
 - 依存方向は下位方向の一方向のみ（parser ← semantics ← lsp-editor。lsp-editorはparserにも直接依存してよい）。逆方向のimportは禁止で、各`.hxml`のクラスパスで強制する
