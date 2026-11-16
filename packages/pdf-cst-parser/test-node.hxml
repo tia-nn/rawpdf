@@ -1,6 +1,5 @@
 --class-path src
 --class-path tests
 --library utest
---dce full
 --main TestMain
 --js bin/test.js

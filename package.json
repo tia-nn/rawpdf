@@ -4,7 +4,8 @@
   "scripts": {
     "test": "task test"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@go-task/cli": "^3.54.0",
     "lix": "^17.0.4-alpha.0"
   }
 }

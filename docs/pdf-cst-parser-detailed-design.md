@@ -70,7 +70,8 @@ packages/pdf-cst-parser/
 ├── cli/                   … dump CLI（Node向け。ファイル読み込みのため`js.*`/hxnodejsを使ってよい層。旧 cli.ts）
 ├── tests/                 … utest（unit / snapshot / property）
 ├── build.hxml             … 型検査用（全モジュールをコンパイル）
-├── test.hxml              … テスト（Nodeターゲット。evalでも回せるようにする）
+├── test-node.hxml         … テスト（Nodeターゲット。正とする実行環境）
+├── test-interp.hxml       … 同じテストをevalターゲット（`--interp`）で回す（開発中の高速な反復用）
 └── cli.hxml               … CLI（JSに出力。bin: pdf-cst-dump）
 ```
 

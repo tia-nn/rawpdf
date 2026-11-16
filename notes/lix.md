@@ -1,4 +1,4 @@
-ノート# lix（Haxeのバージョンとライブラリの固定）
+# lix（Haxeのバージョンとライブラリの固定）
 
 lixは、Haxeのプロジェクトごとに「どのHaxeコンパイラと、どのライブラリのどの版を使うか」を固定するツール。設定ファイルをリポジトリにコミットしておけば、別のマシンやCIでも同じ環境を再現できる。npmでいう`package.json`の`engines`/`packageManager`とlockfileを合わせた役割を持つ。
 
@@ -78,7 +78,7 @@ lixをインストールすると、`haxe`コマンドは**シム**（本物の`
 
 ```
 rawpdf/
-├── package.json        … devDependenciesにlix（npm workspacesのルート）
+├── package.json        … devDependenciesにlix
 ├── .haxerc             … Haxe 4.3.7
 ├── haxe_libraries/
 │   ├── utest.hxml

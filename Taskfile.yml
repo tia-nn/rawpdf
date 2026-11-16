@@ -2,19 +2,22 @@
 
 version: "3"
 
-vars:
-  GREETING: Hello, world!
+output:
+  group:
+    error_only: true
 
 tasks:
-  default:
-    desc: Print a greeting message
+  build-cst:
+    desc: Build CST
+    dir: packages/pdf-cst-parser
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - npm exec haxe build.hxml
 
   test-build-cst:
     desc: Test build of CST
     dir: packages/pdf-cst-parser
+    deps:
+      - build-cst # 型検査用ビルド
     cmds:
       - npm exec haxe test-node.hxml
 
