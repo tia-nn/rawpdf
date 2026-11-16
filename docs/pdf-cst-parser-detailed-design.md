@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-17（`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -113,6 +113,8 @@ export function isToken(k: SyntaxKind): boolean;
 export function isNode(k: SyntaxKind): boolean;
 export function isKeyword(k: SyntaxKind): boolean;
 ```
+
+`isToken`はトリビアを含まない（`GreenTrivia`と`GreenToken`を別の型にする4章の構成に合わせる）。全種別はトリビア・トークン・ノードのちょうど1つに属し、キーワードはトークンに含まれる。トリビアと区別しない判定が必要な箇所（レキサーの`RawToken`等）は`isToken() || isTrivia()`とする。
 
 基本設計4.5節の`Error`トークンは`Unknown`に一本化する（区別する用途がないため。ノード側の`ErrorNode`は維持）。
 
@@ -482,14 +484,23 @@ Document@0..120
 
 ```
 tests/
-├── LexerTest.hx           … トークン単位のunit（utest）
-├── SnapshotTest.hx        … corpus/ の各ファイル → dumpCst をスナップショット比較
+├── TestMain.hx            … テストの入口（全テストクラスを登録する）
+├── rawpdf/cst/            … src/rawpdf/cst/ と同じパッケージ構成
+│   ├── syntax/
+│   │   └── SyntaxKindTest.hx … SyntaxKindのunit
+│   ├── lex/
+│   │   └── LexerTest.hx   … トークン単位のunit
+│   ├── parse/
+│   │   └── ReparseTest.hx … 「reparse結果 === フルパース結果」の等価性検証（最重要プロパティ）
+│   ├── SnapshotTest.hx    … corpus/ の各ファイル → dumpCst をスナップショット比較
+│   └── PropertyTest.hx    … ランダムバイト列でクラッシュなし・幅不変条件成立
 ├── __snapshots__/         … スナップショットの保存先（更新はフラグ付きで実行したときだけ）
-├── ReparseTest.hx         … 「reparse結果 === フルパース結果」の等価性検証（最重要プロパティ）
-├── PropertyTest.hx        … ランダムバイト列でクラッシュなし・幅不変条件成立
 ├── support/               … 自作のテストヘルパー（スナップショット比較、ランダム入力の生成器）
 └── bench/                 … フルパース／単一オブジェクト編集reparseの計時（Nodeターゲット）
 ```
+
+- テストクラスは、対象モジュールと同じパッケージに`XxxTest`の名前で置く（例: `rawpdf.cst.syntax.SyntaxKind` → `tests/rawpdf/cst/syntax/SyntaxKindTest.hx`）。特定のモジュールに対応しないパッケージ全体のテスト（スナップショット・プロパティ）は`tests/rawpdf/cst/`直下に置く。
+- 同じパッケージに置いても、Haxeでは対象の`private`なメンバーには触れない。触る必要があるときは`@:access`を使う。
 
 - reparse等価性（`dumpCst(reparse(t, e)) === dumpCst(parse(splice(bytes, e)))`）をランダム編集で回すことをプロパティテストの柱とする。
 - スナップショット比較とランダム入力の生成器は自作する（統括3章）。最低限の機能: 生成器はシード値を指定して再現でき、失敗時にシード値と入力を報告する。失敗した入力を小さくする縮小（shrinking）は、必要になってから足す。
