@@ -19,7 +19,7 @@
 
 ## M0 リポジトリ基盤
 
-- [ ] **M0-1 lixとパーサパッケージの雛形**
+- [x] **M0-1 lixとパーサパッケージの雛形**
   - 完了条件: ルートの`package.json`にlixを入れ、`.haxerc`でHaxe 4.3.7を固定する。utestとhxnodejsを`haxe_libraries/`に固定する。`packages/pdf-cst-parser`に`build.hxml`・`test-node.hxml`・`test-interp.hxml`を置き、utestのダミーテスト1本がNodeターゲットで通る（ルートの`npm test`から実行できる）。npm経由（`npx haxe`）でも`.haxerc`の版が使われることを確かめる。同じテストがevalターゲット（`--interp`）でも通る
   - 前提: なし
   - 参照: 統括3章・3.1節、詳細2章
