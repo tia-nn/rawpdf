@@ -1,0 +1,3 @@
+# コーパスはバイト列そのものがテスト対象。gitの改行変換・diffの対象外にする
+# （minimal-crlf.pdf のCRLFが環境によってLFに化けるのを防ぐ）
+* binary
