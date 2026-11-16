@@ -19,14 +19,53 @@ class SyntaxKindTest extends utest.Test {
 	**/
 	static final allKinds:Array<SyntaxKind> = [
 		// trivia
-		Whitespace, Comment,
+		Whitespace,
+		Comment,
 		// tokens
-		Integer, Real, Name, LiteralString, HexString, LeftBracket, RightBracket, LeftDoubleAngle, RightDoubleAngle, LeftBrace, RightBrace,
-		KwTrue, KwFalse, KwNull, KwR, KwObj, KwEndobj, KwStream, KwEndstream, KwXref, KwTrailer, KwStartxref, KwN, KwF,
-		HeaderMarker, StreamBody, Unknown, EndOfFile,
+		Integer,
+		Real,
+		Name,
+		LiteralString,
+		HexString,
+		LeftBracket,
+		RightBracket,
+		LeftDoubleAngle,
+		RightDoubleAngle,
+		LeftBrace,
+		RightBrace,
+		KwTrue,
+		KwFalse,
+		KwNull,
+		KwR,
+		KwObj,
+		KwEndobj,
+		KwStream,
+		KwEndstream,
+		KwXref,
+		KwTrailer,
+		KwStartxref,
+		KwN,
+		KwF,
+		HeaderMarker,
+		StreamBody,
+		Unknown,
+		EndOfFile,
 		// nodes
-		Document, Header, Segment, IndirectObject, StreamClause, SyntaxKind.Array, Dictionary, DictEntry, Reference, XrefSection,
-		XrefSubsection, XrefEntry, TrailerClause, StartxrefClause, ErrorNode,
+		Document,
+		Header,
+		Segment,
+		IndirectObject,
+		StreamClause,
+		SyntaxKind.Array,
+		Dictionary,
+		DictEntry,
+		Reference,
+		XrefSection,
+		XrefSubsection,
+		XrefEntry,
+		TrailerClause,
+		StartxrefClause,
+		ErrorNode,
 	];
 
 	/** 各種別が属するべきグループ。`isToken`はトリビアを含まない（詳細設計3章）。 */
@@ -34,10 +73,10 @@ class SyntaxKindTest extends utest.Test {
 		return switch k {
 			case Whitespace | Comment: Trivia;
 			case Integer | Real | Name | LiteralString | HexString | LeftBracket | RightBracket | LeftDoubleAngle | RightDoubleAngle | LeftBrace |
-				RightBrace | KwTrue | KwFalse | KwNull | KwR | KwObj | KwEndobj | KwStream | KwEndstream | KwXref | KwTrailer | KwStartxref | KwN |
-				KwF | HeaderMarker | StreamBody | Unknown | EndOfFile: Token;
-			case Document | Header | Segment | IndirectObject | StreamClause | Array | Dictionary | DictEntry | Reference | XrefSection |
-				XrefSubsection | XrefEntry | TrailerClause | StartxrefClause | ErrorNode: Node;
+				RightBrace | KwTrue | KwFalse | KwNull | KwR | KwObj | KwEndobj | KwStream | KwEndstream | KwXref | KwTrailer | KwStartxref | KwN | KwF |
+				HeaderMarker | StreamBody | Unknown | EndOfFile: Token;
+			case Document | Header | Segment | IndirectObject | StreamClause | Array | Dictionary | DictEntry | Reference | XrefSection | XrefSubsection |
+				XrefEntry | TrailerClause | StartxrefClause | ErrorNode: Node;
 		}
 	}
 
