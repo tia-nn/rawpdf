@@ -2,6 +2,7 @@
   "name": "rawpdf",
   "private": true,
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "test": "task test",
     "lint": "task lint"
   },

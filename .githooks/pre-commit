@@ -1,0 +1,6 @@
+#!/bin/sh
+# コミット前にフォーマット検査とcheckstyleを走らせる（WBS M0-4）。失敗したらコミットを止める。
+# 有効にするのは`npm install`／`npm ci`（package.jsonのprepareでcore.hooksPathを.githooksにする）。
+# 急ぐときは`git commit --no-verify`で飛ばせる。
+# 注意: 検査するのはステージした内容ではなく作業ツリーのファイル。
+exec npm run --silent lint
