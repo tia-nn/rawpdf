@@ -1,0 +1,11 @@
+{
+  "name": "rawpdf",
+  "private": true,
+  "scripts": {
+    "test": "task test"
+  },
+  "devDependencies": {
+    "@go-task/cli": "^3.54.0",
+    "lix": "^17.0.4-alpha.0"
+  }
+}

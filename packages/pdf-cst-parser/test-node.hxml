@@ -1,0 +1,5 @@
+--class-path src
+--class-path tests
+--library utest
+--main TestMain
+--js bin/test.js

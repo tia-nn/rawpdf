@@ -1,0 +1,6 @@
+--class-path src
+--dce full
+--js bin/build.js
+--macro include("rawpdf.cst")
+
+rawpdf.cst.Cst

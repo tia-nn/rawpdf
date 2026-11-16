@@ -53,11 +53,32 @@ lixをインストールすると、`haxe`コマンドは**シム**（本物の`
 | `lix install gh:owner/repo` | GitHubから追加する | `npm install github:owner/repo` |
 | `lix download` | `haxe_libraries/`に書かれたものを全部取ってくる | `npm ci` |
 
+### 4. `haxelib.json`：ライブラリを「配る側」の説明書
+
+ここまでのファイルは、ライブラリを**使う側**のもの。`haxelib.json`は、ライブラリを**配る側**がリポジトリのルートに置くメタデータで、npmの`package.json`のうち「パッケージとしての情報」の部分にあたる。hxnodejsのもの（抜粋）:
+
+```json
+{
+  "name": "hxnodejs",
+  "version": "12.2.0",
+  "classPath": "src",
+  "license": "MIT",
+  "dependencies": {}
+}
+```
+
+- `classPath`: ソースのルート。使う側の`-cp`はここを指す
+- `version`: 使う側の`-D hxnodejs=12.2.0`の値になる
+- `dependencies`: このライブラリが依存する他のライブラリ
+- haxelibに公開するとき（`haxelib submit`）と、lixなどがライブラリを取ってきて`haxe_libraries/*.hxml`を作るときに読まれる
+
+**ビルドには必須ではない**。Haxeのコンパイラ自体は`haxelib.json`を読まない（読むのは`.hxml`）。自分たちのパッケージを`-cp`で直接指すだけなら、無くても動く。
+
 ## 具体例：rawpdfでの置き方
 
 ```
 rawpdf/
-├── package.json        … devDependenciesにlix（npm workspacesのルート）
+├── package.json        … devDependenciesにlix
 ├── .haxerc             … Haxe 4.3.7
 ├── haxe_libraries/
 │   ├── utest.hxml

@@ -37,8 +37,7 @@ packages/pdf-semantics/
 │   ├── SemanticDiagnostics.hx … 意味診断コード定義（Diagnostic型はparserを再利用。旧 diagnostics.ts）
 │   └── Semantics.hx       … 公開APIの入口                          （旧 index.ts）
 ├── tests/                 … utest
-├── haxelib.json           … 依存: pdf-cst-parser のみ
-└── test.hxml              … クラスパスは自分のsrcとpdf-cst-parserのsrcのみ（統括3章の依存方向の強制）
+└── test.hxml              … クラスパスは自分のsrcとpdf-cst-parserのsrcのみ（依存はpdf-cst-parserだけ。統括3章の依存方向の強制）
 ```
 
 本文中のTS時代のファイル名（`decode/string.ts`等）は、この表の対応するHaxeモジュールを指す。

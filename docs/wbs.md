@@ -19,8 +19,8 @@
 
 ## M0 リポジトリ基盤
 
-- [ ] **M0-1 lixとパーサパッケージの雛形**
-  - 完了条件: ルートの`package.json`（npm workspaces）にlixを入れ、`.haxerc`でHaxe 4.3.7を固定する。utestとhxnodejsを`haxe_libraries/`に固定する。`packages/pdf-cst-parser`に`haxelib.json`・`build.hxml`・`test.hxml`を置き、utestのダミーテスト1本がNodeターゲットで通る（ルートの`npm test`から実行できる）。npm経由（`npx haxe`）でも`.haxerc`の版が使われることを確かめる。同じテストがevalターゲット（`--interp`）でも通る
+- [x] **M0-1 lixとパーサパッケージの雛形**
+  - 完了条件: ルートの`package.json`にlixを入れ、`.haxerc`でHaxe 4.3.7を固定する。utestとhxnodejsを`haxe_libraries/`に固定する。`packages/pdf-cst-parser`に`build.hxml`・`test-node.hxml`・`test-interp.hxml`を置き、utestのダミーテスト1本がNodeターゲットで通る（ルートの`npm test`から実行できる）。npm経由（`npx haxe`）でも`.haxerc`の版が使われることを確かめる。同じテストがevalターゲット（`--interp`）でも通る
   - 前提: なし
   - 参照: 統括3章・3.1節、詳細2章
   - 新しい概念: lix（Haxeのバージョンとライブラリの固定）、`.hxml`とクラスパス、Haxeのターゲット（js / eval）
@@ -231,7 +231,7 @@
 
 順序はLSP設計8章のとおり。LSP層の詳細設計を書くことから始める（統括のドキュメントツリー）。
 
-- [ ] **L0** LSP層の詳細設計を書く。カスタムリクエストの型（LSP 3.5節）、サーバー（Haxe）とクライアント（TS）のパッケージ構成、VSIXのバンドル方針（統括8章）もここで決める
+- [ ] **L0** LSP層の詳細設計を書く。カスタムリクエストの型（LSP 3.5節）、サーバー（Haxe）とクライアント（TS）のパッケージ構成、VSIXのバンドル方針、クライアントをnpm workspacesに入れるか（統括8章）もここで決める
 - [ ] **L1** 投影層を単体で完成させる（往復性テストまで）。あわせて、`FileSystemProvider`をカスタムリクエストでサーバーに委譲する構成を、最小のサーバーで貫通させる（開く→1文字編集→保存→バイト一致。LSP 3.5節・8章）
 - [ ] **L2** 診断配信でパイプライン全体（キー入力 → reparse → semantics → 投影 → 診断）を貫通させる
 - [ ] **L3** ナビゲーション（definition・references）
