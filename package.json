@@ -2,7 +2,9 @@
   "name": "rawpdf",
   "private": true,
   "scripts": {
-    "test": "task test"
+    "prepare": "git config core.hooksPath .githooks",
+    "test": "task test",
+    "lint": "task lint"
   },
   "devDependencies": {
     "@go-task/cli": "^3.54.0",

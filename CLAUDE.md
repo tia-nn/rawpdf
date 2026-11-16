@@ -54,6 +54,20 @@ PRの範囲について:
 - ミュータブルにする必要がなければ基本的に `final` をつける。
 - 中身のコードを見て意図が明確で、1行で書ける関数には `inline` をつける。
 
+### フォーマッタ・リンターの設定の意図
+
+`hxformat.json`・`checkstyle.json`（ルート）はJSONでコメントを書けないため、意図をここに書く。実行は`npx task format`（整形）・`npm run lint`（検査。CIとpre-commitでも走る）。
+
+- `hxformat.json`は空（haxe-formatterの既定どおり。タブインデント・1行160文字）。ファイルを置くのは、親ディレクトリへの設定探索をここで止めるため
+- 整形（空白・空行・インデント・波括弧の位置・行の長さ）はformatterだけが決める。checkstyleの同種のチェックは、判定の食い違いを避けるため外している
+- checkstyleの既定の重大度は`ERROR`。`--exitcode`はERRORの違反しか数えないので、有効にしたチェックはすべてCIを落とす。警告にとどめたいチェックだけ個別に`severity`を下げる
+- 外しているチェックと理由:
+  - 型注釈を求めるもの（`Return`・`VarTypeHint`・`Type`）: 上の「返り値の型は推論に任せて良い」に合わせる
+  - ドキュメントコメントを求めるもの（`FieldDocComment`・`TypeDocComment`・`DocCommentStyle`）: 書くかどうかは人が判断する
+  - パーサやテストで誤検出が多いもの（`MagicNumber`・`CyclomaticComplexity`・`ReturnCount`・`TODOComment`・`AvoidTernaryOperator`・`MultipleStringLiterals`・`CodeSimilarity`）: バイト値や字句解析の大きな`switch`が普通に出てくるため
+- 命名: 普通のフィールドはcamelCase、enumのコンストラクタはPascalCase。abstractのフィールドはどちらも許す（`enum abstract`の値と普通のフィールドを設定で区別できないため）。`static inline`の定数はUPPER_CASE、`static final`はUPPER_CASEとcamelCaseのどちらも許す
+- VS Codeのhaxe-checkstyle拡張が同梱するcheckstyleは、lixで固定した版より古いことがある。結果が食い違ったら`npm run lint`を正とする
+
 ## 学習ノート（`notes/`）
 
 一度説明した概念を何度も説明し直さないために、説明した内容をノートとして残す。
