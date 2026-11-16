@@ -1,0 +1,10 @@
+{
+  "name": "rawpdf",
+  "private": true,
+  "scripts": {
+    "test": "task test"
+  },
+  "dependencies": {
+    "lix": "^17.0.4-alpha.0"
+  }
+}

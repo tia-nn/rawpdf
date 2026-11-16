@@ -45,6 +45,15 @@ lsp-editor(TS):
 - 投影層などVS Code APIの中でパース結果が要る処理は、カスタムリクエストでサーバーに委譲する（LSP設計3.5節）。そのため、上の3つの課題はどれも避けられている
 - この構成でも残る相互運用は、Haxeから既存のJSを使う方向（hxnodejs、vshaxeの`vscode-json-rpc`）だけで、こちらは整備されている
 
+### externsが古いときの考え方（hxnodejsの例）
+
+hxnodejs（Node APIのexterns）は、2026-11時点でも「12.2.0」（Node 12時代のAPI）のままで、リリースは2024-04が最後になっている（リポジトリは2026-07にCI追加やfsのバグ修正があり、放置はされていない）。それでも、次の理由で大きな問題にはならない。
+
+- **externsは型の宣言だけ**: 実行時に動くのは、マシンに入っている本物のNodeである。externsが古くても、宣言されているAPIは新しいNodeでもほぼそのまま動く（Nodeは安定したAPIをめったに消さない）。困るのは「新しいAPIの宣言が無い」ことだけ
+- **足りないAPIは自分で宣言できる**: 例えば`worker_threads`はhxnodejsに無い。必要になったら、`@:jsRequire("worker_threads")`を付けた`extern class`を、使う関数の分だけ数行書けばよい。大量に必要なら、dts2hxで`@types/node`から自動生成する手もある
+- **影響する範囲が狭い**: Node APIを使うのはサーバーのI/O層だけと決めてある（統括設計3章）。parser・semanticsはそもそもexternsに触れない
+- **ファイル入出力は標準APIで書ける**: hxnodejsは、Haxe標準の`sys.io.File`・`sys.FileSystem`のNode向け実装も含んでいる。ファイルの読み書きを`sys.io.File.getBytes`のように書けば、ターゲット非依存のコードのまま、Nodeでもネイティブでも動く
+
 ## 参考
 
 - genes: https://github.com/samwightt/genes

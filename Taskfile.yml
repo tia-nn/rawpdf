@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: "3"
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  default:
+    desc: Print a greeting message
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  test-build-cst:
+    desc: Test build of CST
+    dir: packages/pdf-cst-parser
+    cmds:
+      - npm exec haxe test-node.hxml
+
+  test-run-cst-node:
+    desc: Run CST test in node
+    dir: packages/pdf-cst-parser
+    deps:
+      - test-build-cst
+    cmds:
+      - node bin/test.js
+
+  test-run-cst-interp:
+    desc: Run CST test in haxe interpreter
+    dir: packages/pdf-cst-parser
+    cmds:
+      - npm exec haxe test-interp.hxml
+
+  test-run-cst-all:
+    desc: Run CST test in node,haxe interpreter
+    dir: packages/pdf-cst-parser
+    deps:
+      - test-run-cst-node
+      - test-run-cst-interp
+
+  test-all:
+    aliases: [test]
+    desc: Run test
+    deps:
+      - test-run-cst-all
