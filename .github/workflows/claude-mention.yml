@@ -13,10 +13,12 @@ on:
 
 jobs:
   respond:
+    # 呼び出した人（コメント・レビューの投稿者）が tia-nn 以外なら対象外（トークンの消費を防ぐ）
     if: |
+      github.event.sender.login == 'tia-nn' && (
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
