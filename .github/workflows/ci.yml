@@ -1,0 +1,46 @@
+# pushのたびに、依存のinstall・型検査・テスト（Node／eval）を走らせる（WBS M0-2）。
+# 手順の中身はTaskfile.ymlにあり、ここでは入口の`npm test`を呼ぶだけ（統括設計3章）。
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同じブランチに続けてpushしたら、古い実行は取り消す
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: lts/*
+          cache: npm
+
+      # lixのキャッシュ（Haxe本体とライブラリの実体）。.haxercとhaxe_librariesが変わったら作り直す
+      - name: Cache Haxe toolchain and libraries
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/haxe
+          key: haxe-${{ runner.os }}-${{ hashFiles('.haxerc', 'haxe_libraries/**') }}
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Haxe本体はhaxeのシムが初回に自動で取ってくるが、haxe_libraries/のライブラリは
+      # 自動では取ってこない（まっさらな環境で確認済み）ため、明示的にダウンロードする
+      - name: Download Haxe libraries
+        run: npx lix download
+
+      - name: Test
+        run: npm test
