@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+# pdf-cst-parserのタスク。ルートのTaskfile.ymlから`cst`という名前空間でincludeされ、
+# `task cst:test`のように呼ぶ。作業ディレクトリはinclude側の`dir`でこのパッケージに固定される。
+version: "3"
+
+output:
+  group:
+    error_only: true
+
+tasks:
+  build:
+    desc: Type-check all modules (build.hxml)
+    cmds:
+      - npm exec haxe build.hxml
+
+  test-build:
+    desc: Build tests for Node
+    deps:
+      - build # 型検査用ビルド
+    cmds:
+      - npm exec haxe test-node.hxml
+
+  test-node:
+    desc: Run tests on Node
+    deps:
+      - test-build
+    cmds:
+      - node bin/test.js
+
+  test-interp:
+    desc: Run tests on the Haxe interpreter (eval)
+    cmds:
+      - npm exec haxe test-interp.hxml
+
+  test:
+    desc: Run tests on Node and eval
+    deps:
+      - test-node
+      - test-interp

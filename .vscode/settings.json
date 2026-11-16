@@ -1,0 +1,22 @@
+{
+  // lixのシムを使う（.haxercの版とhaxe_libraries/のライブラリが使われる）。PATH上の別のhaxeを避けるため
+  "haxe.executable": "node_modules/.bin/haxe",
+
+  // vshaxeはルート直下の*.hxmlしか自動検出しないため、パッケージごとの.hxmlを明示する。
+  // .hxml内の相対パスはワークスペースルートから解決されるので、--cwdでパッケージに移ってから読む。
+  // filesに合うファイルを開くと、その設定が自動で選ばれる。パッケージを作ったら同じ形で足す
+  "haxe.configurations": [
+    {
+      "label": "cst",
+      "files": ["packages/pdf-cst-parser/**"],
+      "args": ["--cwd", "packages/pdf-cst-parser", "test-node.hxml"]
+    }
+  ],
+
+  // haxe-language-serverは保存時にしかエラー表示（診断）を更新しないため、
+  // Haxeファイルだけ、手が止まってから少しすると自動で保存されるようにする
+  "[haxe]": {
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 800
+  }
+}

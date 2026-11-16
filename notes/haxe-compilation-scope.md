@@ -45,7 +45,3 @@ src/
 
 - Haxe Manual「Dead Code Elimination」
 - Haxe Manual「Compiler Usage」（`--macro include`。`haxe.macro.Compiler.include`のAPIドキュメントも参照）
-
-## 関連ノート
-
-- [lix](lix.md)
