@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://taskfile.dev/schema.json
 
 # ルートのTaskfile。各パッケージの手順はパッケージ内のTaskfile.ymlに書き、ここではincludeしてまとめるだけ。
-# 入口は`npm test`（= `task test`）。CIも同じ入口を呼ぶ（統括設計3章）。
+# 入口は`npm test`（= `task test`）と`npm run lint`（= `task lint`）。CIも同じ入口を呼ぶ（統括設計3章）。
 version: "3"
 
 output:
@@ -18,3 +18,29 @@ tasks:
     desc: Run tests of all packages
     deps:
       - cst:test
+
+  # フォーマッタ・リンターは全パッケージにまとめてかける（WBS M0-4）。
+  # 設定はルートのhxformat.json（formatterが対象ファイルから親ディレクトリへ探す）と
+  # checkstyle.json（checkstyleが作業ディレクトリ＝ルートから読む）
+  format:
+    desc: Format all Haxe sources in place
+    cmds:
+      - npm exec haxelib run formatter -- -s packages
+
+  format-check:
+    desc: Check that all Haxe sources are formatted (fails on diff)
+    cmds:
+      - npm exec haxelib run formatter -- --check -s packages
+
+  checkstyle:
+    desc: Run haxe-checkstyle on all Haxe sources
+    cmds:
+      # --exitcode: 違反の数を終了コードにする。ただしInfoの違反は数えないため、
+      # CIで落としたいチェックはcheckstyle.jsonで重大度をWARNING以上にする
+      - npm exec haxelib run checkstyle -- --exitcode --nostyle -s packages
+
+  lint:
+    desc: Check formatting and run checkstyle
+    deps:
+      - format-check
+      - checkstyle

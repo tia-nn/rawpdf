@@ -1,5 +1,6 @@
 # pushのたびに、依存のinstall・型検査・テスト（Node／eval）を走らせる（WBS M0-2）。
-# 手順の中身はTaskfile.ymlにあり、ここでは入口の`npm test`を呼ぶだけ（統括設計3章）。
+# あわせて、フォーマット済みかの検査とcheckstyleを走らせる（WBS M0-4）。
+# 手順の中身はTaskfile.ymlにあり、ここでは入口の`npm test`・`npm run lint`を呼ぶだけ（統括設計3章）。
 name: CI
 
 on:
@@ -44,3 +45,8 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # テストが落ちてもフォーマット・リンターの結果は見たいので、前のステップの成否によらず走らせる
+      - name: Lint (format check and checkstyle)
+        if: ${{ !cancelled() }}
+        run: npm run lint
