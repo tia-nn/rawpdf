@@ -1,7 +1,8 @@
 package rawpdf.cst.syntax;
 
 import utest.Assert;
-import rawpdf.cst.syntax.SyntaxKind;
+
+using rawpdf.cst.syntax.SyntaxKind;
 
 /** テストの期待値として使う、種別のグループ（パーサ詳細設計3章）。 */
 private enum Group {

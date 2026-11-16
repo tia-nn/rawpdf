@@ -23,6 +23,12 @@
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 800
   },
+  // haxe-checkstyle拡張は、ワークスペースルートからのパスがsourceFoldersで始まるファイルだけを検査する
+  // （既定は["src", "Source"]）。コードはpackages/以下にあるので指定する。
+  // 設定はファイルから親へたどって見つけたcheckstyle.json（ルートのもの）が使われる。検査は開いたとき・保存したとき
+  "haxecheckstyle.sourceFolders": [
+    "packages"
+  ],
   "cSpell.words": [
     "Endobj",
     "Endstream",

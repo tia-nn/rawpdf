@@ -35,8 +35,8 @@ tasks:
   checkstyle:
     desc: Run haxe-checkstyle on all Haxe sources
     cmds:
-      # --exitcode: 違反の数を終了コードにする。ただしInfoの違反は数えないため、
-      # CIで落としたいチェックはcheckstyle.jsonで重大度をWARNING以上にする
+      # --exitcode: 重大度がERRORの違反の数を終了コードにする（WARNING・INFOは数えない）。
+      # そのためcheckstyle.jsonでは既定の重大度をERRORにしている
       - npm exec haxelib run checkstyle -- --exitcode --nostyle -s packages
 
   lint:

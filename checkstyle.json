@@ -1,0 +1,200 @@
+{
+	"defaultSeverity": "ERROR",
+	"checks": [
+		{
+			"type": "Anonymous"
+		},
+		{
+			"type": "ArrayLiteral"
+		},
+		{
+			"type": "ArrowFunction"
+		},
+		{
+			"type": "AvoidIdentifier"
+		},
+		{
+			"type": "AvoidStarImport"
+		},
+		{
+			"type": "BlockBreakingConditional"
+		},
+		{
+			"type": "CatchParameterName"
+		},
+		{
+			"type": "CommentedOutCode"
+		},
+		{
+			"type": "ConditionalCompilation"
+		},
+		{
+			"type": "ConstantName",
+			"props": {
+				"tokens": [
+					"INLINE"
+				],
+				"format": "^[A-Z][A-Z0-9]*(_[A-Z0-9_]+)*$"
+			}
+		},
+		{
+			"type": "ConstantName",
+			"props": {
+				"tokens": [
+					"NOTINLINE"
+				],
+				"format": "^([A-Z][A-Z0-9]*(_[A-Z0-9_]+)*|[a-z][a-zA-Z0-9]*)$"
+			}
+		},
+		{
+			"type": "DefaultComesLast"
+		},
+		{
+			"type": "Dynamic"
+		},
+		{
+			"type": "ERegLiteral"
+		},
+		{
+			"type": "EmptyBlock"
+		},
+		{
+			"type": "EmptyPackage"
+		},
+		{
+			"type": "FileLength"
+		},
+		{
+			"type": "FileNameCase"
+		},
+		{
+			"type": "Final"
+		},
+		{
+			"type": "HexadecimalLiteral"
+		},
+		{
+			"type": "HiddenField"
+		},
+		{
+			"type": "InnerAssignment"
+		},
+		{
+			"type": "Interface"
+		},
+		{
+			"type": "ListenerName"
+		},
+		{
+			"type": "LocalVariableName"
+		},
+		{
+			"type": "MemberName",
+			"props": {
+				"tokens": [
+					"PUBLIC",
+					"PRIVATE",
+					"CLASS",
+					"TYPEDEF"
+				],
+				"format": "^[a-z][a-zA-Z0-9]*$"
+			}
+		},
+		{
+			"type": "MemberName",
+			"props": {
+				"tokens": [
+					"ENUM"
+				],
+				"format": "^[A-Z][a-zA-Z0-9]*$"
+			}
+		},
+		{
+			"type": "MemberName",
+			"props": {
+				"tokens": [
+					"ABSTRACT"
+				],
+				"format": "^[a-zA-Z][a-zA-Z0-9]*$"
+			}
+		},
+		{
+			"type": "MethodCount"
+		},
+		{
+			"type": "MethodLength"
+		},
+		{
+			"type": "MethodName"
+		},
+		{
+			"type": "ModifierOrder"
+		},
+		{
+			"type": "MultipleVariableDeclarations"
+		},
+		{
+			"type": "NeedBraces"
+		},
+		{
+			"type": "NestedControlFlow"
+		},
+		{
+			"type": "NestedForDepth"
+		},
+		{
+			"type": "NestedIfDepth"
+		},
+		{
+			"type": "NestedTryDepth"
+		},
+		{
+			"type": "NullableParameter"
+		},
+		{
+			"type": "ParameterName"
+		},
+		{
+			"type": "ParameterNumber"
+		},
+		{
+			"type": "PublicAccessor"
+		},
+		{
+			"type": "RedundantAccessMeta"
+		},
+		{
+			"type": "RedundantAllowMeta"
+		},
+		{
+			"type": "RedundantModifier"
+		},
+		{
+			"type": "SimplifyBooleanExpression"
+		},
+		{
+			"type": "SimplifyBooleanReturn"
+		},
+		{
+			"type": "StringLiteral"
+		},
+		{
+			"type": "Trace"
+		},
+		{
+			"type": "TypeName"
+		},
+		{
+			"type": "UnnecessaryConstructor"
+		},
+		{
+			"type": "UnusedImport"
+		},
+		{
+			"type": "UnusedLocalVar"
+		},
+		{
+			"type": "VariableInitialisation"
+		}
+	]
+}
