@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-17（`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-17（バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -216,10 +216,24 @@ export class SyntaxToken {
 ### 6.1 バイト分類（`byte-class.ts`）
 
 ```ts
-export const BYTE_CLASS: Uint8Array; // 256要素。0=Regular, 1=Whitespace, 2=Delimiter
+/** Haxeでは enum abstract ByteClass(Int)（0章）。値は Regular / Whitespace / Delimiter の3つ */
+export type ByteClass = Regular | Whitespace | Delimiter;
+
+// ByteClassのメソッド（inline）
+isRegular(): boolean;
+isWhitespace(): boolean;
+isDelimiter(): boolean;
+
+/** バイト値 b（0〜255）の分類を返す。inline */
+static of(b: number): ByteClass;
+
+// 非公開
+static TABLE: readonly ByteClass[]; // 256要素。添字はバイト値
 ```
 
-モジュール初期化時に基本設計4.1節の分類で埋める。ホットループはこのテーブル参照のみ。
+`TABLE`はモジュール初期化時に基本設計4.1節の分類で埋める（全要素を`Regular`で作り、whitespace 6個・delimiter 10個を上書きする）。表は非公開とし、外からの入口は`of`だけにする。ホットループは`of`（`inline`なので展開後は表の参照1回）だけを使う。表の持ち方（`ReadOnlyArray`か`haxe.io.Bytes`か等）を後で変えても、影響を`ByteClass.hx`の中に閉じ込めるためである。値の数値（0・1・2）には依存しない。
+
+**`of`の引数は0〜255に限る**。呼び出し側（Lexer）は`Bytes.get`の戻り値だけを渡す。EOF等の番兵値（-1など）を渡したときの結果は未定義で、ターゲットによって異なる（JSでは`null`になり`is*`がすべて`false`、静的ターゲットでは`Regular`になり得る）。EOFの判定は`of`を呼ぶ前に呼び出し側で行う。
 
 ### 6.2 Lexer（`lexer.ts`）
 

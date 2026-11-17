@@ -8,3 +8,4 @@
 - [SyntaxKindと`enum abstract`](syntax-kind-enum-abstract.md) — 種類を`Int`の上の抽象型で表し、値の区間で分類する
 - [Green/Red木](green-red-tree.md) — 長さだけを持つ不変・共有のGreen木と、親と絶対位置を後付けするRedビューの2層構成
 - [Haxeの`inline`](haxe-inline.md) — 呼び出しをコンパイル時に展開する。小さな`abstract`のメソッドと定数に使い、大きい・再帰する関数には使わない
+- [バイト分類（ByteClass）](byte-class.md) — 256バイトをWhitespace/Delimiter/Regularに分ける表。トークンの切れ目を決める
