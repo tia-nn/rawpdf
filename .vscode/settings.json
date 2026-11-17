@@ -1,19 +1,14 @@
 {
   // lixのシムを使う（.haxercの版とhaxe_libraries/のライブラリが使われる）。PATH上の別のhaxeを避けるため
   "haxe.executable": "node_modules/.bin/haxe",
-  // vshaxeはルート直下の*.hxmlしか自動検出しないため、パッケージごとの.hxmlを明示する。
-  // .hxml内の相対パスはワークスペースルートから解決されるので、--cwdでパッケージに移ってから読む。
-  // filesに合うファイルを開くと、その設定が自動で選ばれる。パッケージを作ったら同じ形で足す
+  // 補完・エラー表示には、全パッケージをまとめたルートのdisplay.hxmlを使う（意図はdisplay.hxmlの冒頭）。
+  // ルート直下の*.hxmlは自動検出もされるが、ほかのhxmlが増えても選ばれないよう明示する。
+  // パッケージを作ったら、ここではなくdisplay.hxmlに足す
   "haxe.configurations": [
     {
-      "label": "cst",
-      "files": [
-        "packages/pdf-cst-parser/**"
-      ],
+      "label": "display",
       "args": [
-        "--cwd",
-        "packages/pdf-cst-parser",
-        "test-node.hxml"
+        "display.hxml"
       ]
     }
   ],

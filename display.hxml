@@ -1,0 +1,18 @@
+# エディタ（vshaxe）の補完・エラー表示専用。ビルドやテストには使わない。
+#
+# 全パッケージのsrc/とtests/を1つのクラスパスに並べ、どのファイルを開いても同じ設定で型検査されるようにする。
+# そのため、ここでは逆方向のimport（例: rawpdf.cstからrawpdf.semantics）はエラーにならない。
+# 依存方向の強制は、パッケージごとの.hxml（build.hxml・test-*.hxml）で行い、npm testとCIで止める（統括設計3章）。
+#
+# パスはリポジトリのルートから解決される。パッケージを足したら、そのsrc/・tests/と、include・ライブラリを足す。
+
+# pdf-cst-parser
+--class-path packages/pdf-cst-parser/src
+--class-path packages/pdf-cst-parser/tests
+
+# テスト
+--library utest
+--main TestMain
+
+--js bin/display.js
+--no-output
