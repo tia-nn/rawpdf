@@ -23,9 +23,6 @@
 			"type": "CatchParameterName"
 		},
 		{
-			"type": "CommentedOutCode"
-		},
-		{
 			"type": "ConditionalCompilation"
 		},
 		{

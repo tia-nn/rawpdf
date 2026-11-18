@@ -69,22 +69,4 @@ class ByteClassTest extends utest.Test {
 		Assert.equals(ByteClass.Regular, ByteClass.of(0x80));
 		Assert.equals(ByteClass.Regular, ByteClass.of(0xFF));
 	}
-
-	function testIsRegular() {
-		Assert.isTrue(ByteClass.Regular.isRegular());
-		Assert.isFalse(ByteClass.Whitespace.isRegular());
-		Assert.isFalse(ByteClass.Delimiter.isRegular());
-	}
-
-	function testIsWhitespace() {
-		Assert.isFalse(ByteClass.Regular.isWhitespace());
-		Assert.isTrue(ByteClass.Whitespace.isWhitespace());
-		Assert.isFalse(ByteClass.Delimiter.isWhitespace());
-	}
-
-	function testIsDelimiter() {
-		Assert.isFalse(ByteClass.Regular.isDelimiter());
-		Assert.isFalse(ByteClass.Whitespace.isDelimiter());
-		Assert.isTrue(ByteClass.Delimiter.isDelimiter());
-	}
 }

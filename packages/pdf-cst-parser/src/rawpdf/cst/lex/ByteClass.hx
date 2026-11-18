@@ -8,18 +8,6 @@ enum abstract ByteClass(Int) {
 	var Whitespace;
 	var Delimiter;
 
-	public inline function isRegular() {
-		return abstract == Regular;
-	}
-
-	public inline function isWhitespace() {
-		return abstract == Whitespace;
-	}
-
-	public inline function isDelimiter() {
-		return abstract == Delimiter;
-	}
-
 	/** 基本設計4.1節の分類。添字はバイト値（0〜255） **/
 	static final TABLE:ReadOnlyArray<ByteClass> = {
 		final table = [for (_ in 0...256) Regular];

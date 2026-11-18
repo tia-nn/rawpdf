@@ -14,5 +14,7 @@
 --library utest
 --main TestMain
 
+--macro nullSafety("rawpdf.cst", Strict)
+
 --js bin/display.js
 --no-output

@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -235,13 +235,8 @@ export class SyntaxToken {
 ### 6.1 バイト分類（`byte-class.ts`）
 
 ```ts
-/** Haxeでは enum abstract ByteClass(Int)（0章）。値は Regular / Whitespace / Delimiter の3つ */
+/** Haxeでは enum abstract ByteClass(Int)（0章）。値は Regular / Whitespace / Delimiter の3つ。判定は == か switch で行う */
 export type ByteClass = Regular | Whitespace | Delimiter;
-
-// ByteClassのメソッド（inline）
-isRegular(): boolean;
-isWhitespace(): boolean;
-isDelimiter(): boolean;
 
 /** バイト値 b（0〜255）の分類を返す。範囲外は例外。inlineにしない */
 static of(b: number): ByteClass;
@@ -252,7 +247,7 @@ static TABLE: readonly ByteClass[]; // 256要素。添字はバイト値
 
 `TABLE`はモジュール初期化時に基本設計4.1節の分類で埋める（全要素を`Regular`で作り、whitespace 6個・delimiter 10個を上書きする）。表は非公開とし、外からの入口は`of`だけにする。ホットループは`of`だけを使う。表の持ち方（`ReadOnlyArray`か`haxe.io.Bytes`か等）を後で変えても、影響を`ByteClass.hx`の中に閉じ込めるためである。値の数値（0・1・2）には依存しない。
 
-**`of`の引数は0〜255に限り、範囲外（EOF等の番兵値 -1、256以上）を渡すと例外を投げる**。範囲外の値を渡すのは呼び出し側（Lexer）のバグであり、入力のPDFからは起こらない（Lexerは`Bytes.get`の戻り値＝必ず0〜255だけを渡し、EOFの判定は`of`を呼ぶ前に行う）。したがってこの例外は基本設計2.1節のerror-tolerant要件（壊れた入力でクラッシュしない）とは衝突しない。検査を省いた場合、範囲外の結果はターゲットごとに異なり（JSでは`null`になり`is*`がすべて`false`、静的ターゲットでは`Regular`になり得る）、EOF判定の漏れが気づかれないまま誤った字句解析になる。例外にして、こうした呼び出し側のバグをテストで早く見つけられるようにする。範囲外で例外になることは単体テストで確認する。
+**`of`の引数は0〜255に限り、範囲外（EOF等の番兵値 -1、256以上）を渡すと例外を投げる**。範囲外の値を渡すのは呼び出し側（Lexer）のバグであり、入力のPDFからは起こらない（Lexerは`Bytes.get`の戻り値＝必ず0〜255だけを渡し、EOFの判定は`of`を呼ぶ前に行う）。したがってこの例外は基本設計2.1節のerror-tolerant要件（壊れた入力でクラッシュしない）とは衝突しない。検査を省いた場合、範囲外の結果はターゲットごとに異なり（JSでは`null`になりどの値とも一致しない、静的ターゲットでは`Regular`になり得る）、EOF判定の漏れが気づかれないまま誤った字句解析になる。例外にして、こうした呼び出し側のバグをテストで早く見つけられるようにする。範囲外で例外になることは単体テストで確認する。
 
 性能: 範囲検査（比較2回）と関数呼び出しが毎バイト入る。`inline`にすると呼び出しのたびに`throw`を含む本体が展開されるため、現時点では付けない。M6-1のベンチマークで性能予算（統括設計）に対して効いているとわかった場合に限り、`inline`化、または検査を外して範囲外の扱いを未定義に戻す（その場合はLexerのテストで範囲外を渡さないことを守る）ことを検討する。
 
@@ -296,7 +291,7 @@ export class Lexer {
 2. `StreamBody`（長さ0もあり得る。パーサ側の構造を一様にするため常に返す）。境界は`streamBodyHints`に`bodyStart`のヒントがあり、`endstreamStart + 9 <= end`かつ`bytes[endstreamStart .. +9]`が`endstream`に一致すればそれを使い、そうでなければ`findEndstream(bytes, bodyStart, end)`（6.4節）。見つからなければ`end`まで＋`Unterminated`。
 3. 以降は構造モード。除外されたEOLはWhitespaceトリビアとして、続く`KwEndstream`に付く。
 
-構造モードの分岐は基本設計4.2節の通り。実装注意:
+構造モードの分岐は基本設計4.2節の通り。入力ごとに返すトークン種別の一覧と未決事項は`pdf-cst-lexer-spec.md`にまとめる。実装注意:
 
 - regular runの分類は「数値判定 → 長さ別キーワード完全一致 → Unknown」の順。キーワード照合は長さでswitchしてからバイト比較（ハッシュ不要）。
 - `%`開始のコメントは、直後が`PDF-`なら`HeaderMarker`、それ以外は`Comment`トリビア（1章）。行末（CR/LF）は含まない。

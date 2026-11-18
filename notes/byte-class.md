@@ -47,4 +47,4 @@ obj      Regular run → '<'(Delimiter)で終わる → KwObj
 ## 関連
 
 - [SyntaxKindと`enum abstract`](syntax-kind-enum-abstract.md)
-- [Haxeの`inline`](haxe-inline.md) — `isWhitespace(b)`のような1行の判定関数に使える
+- [Haxeの`inline`](haxe-inline.md) — 小さな`abstract`のメソッドに使える。`ByteClass`の判定は`ByteClass.of(b) == Whitespace`や`switch`で直接書くので、`is*`メソッドは持たない

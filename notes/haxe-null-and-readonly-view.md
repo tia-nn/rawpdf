@@ -25,6 +25,33 @@
 final start = opts?.start ?? 0;
 ```
 
+### nullを調べた後に`Null`を外す
+
+Haxeの型は、`if (x == null) return;`の後でも`Null<Int>`のまま変わらない（TSのような絞り込み（narrowing）は型には反映されない）。`Int`として扱いたいときは、**型注釈を書いた変数に代入する**（`final c:Int = x;`）。`Null<T>`から`T`への代入は、通常の設定では暗黙に許される。
+
+この「暗黙に許される」が危うさでもある。nullを調べ忘れても代入できてしまい、静的ターゲットでは`0`などに化ける。`@:nullSafety(Strict)`をクラス（またはコンパイル全体の`--macro nullSafety("pkg")`）に付けると、コンパイラがnullの検査を追跡し、**調べた後の代入だけを許し、調べていない代入をエラーにする**（`Null safety: Cannot assign nullable value here.`）。
+
+```haxe
+// 形だけ
+final x = peek();          // Null<Int>
+if (x == null) return …;   // ここで抜ける
+final c:Int = x;           // 検査済みなので、nullSafetyの下でも通る
+```
+
+### 「無いかもしれない値」の実行時コスト: `Option`・`Null<Int>`・番兵値
+
+ホットループ（レキサーの「次のバイトを覗く」など、全バイトに対して呼ばれる処理）では、「無い」の表し方で速さが大きく変わる。
+
+| 表し方 | JS | 静的ターゲット（HashLink・C++） |
+|---|---|---|
+| `haxe.ds.Option<Int>` | `Some(v)`のたびにオブジェクトを作る | 同じくオブジェクトを作る |
+| `Null<Int>` | 数値かnullのまま。オブジェクトは作らない | `Int`をnull可能にするため箱詰め（boxing）が起きる |
+| `Int`＋番兵値（`-1`） | 数値のまま | 数値のまま |
+
+50MBを1バイトずつ覗いて合計するだけのループをNodeで測った結果（2026-11-18、`-D analyzer-optimize`付き）: `Option` 532ms、`Null<Int>` 67ms、`Int(-1)` 56ms。JSでは`Option`だけが桁違いに遅く、`Null<Int>`と番兵値の差は小さい。静的ターゲットは測っていない（表は仕組みからの予想）。
+
+型の安全性は`Option` > `Null<Int>` > 番兵値の順。ホットループの外では`Option`や`Null`を使い、ホットループの中だけ番兵値にする、という使い分けが現実的である。番兵値を使うときは、比較を1か所の関数に閉じ込め、番兵値が外に漏れないようにする（パーサ詳細設計6.1節: `ByteClass.of`に`-1`を渡さない）。
+
 ### 読み取り専用ビュー: `@:forward`付きの`abstract`
 
 `abstract X(Map<K, V>)`は、中身は`Map`のまま、外から見える操作を選び直した別の型になる（[SyntaxKindと`enum abstract`](syntax-kind-enum-abstract.md)の「型だけ別物、中身は同じ」）。
