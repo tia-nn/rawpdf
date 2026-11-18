@@ -345,7 +345,7 @@ export function findEndstream(bytes: Uint8Array, bodyStart: number, end: number)
 1. `bodyStart`から`end`までの範囲で`endstream`の出現を順次探索する。`end`を越える出現は見ない（範囲を越えて本体が伸びたことを`Unterminated`として検出するため。基本設計4.3節 Step 2）。探索プリミティブは環境判定で選ぶ: `Buffer.isBuffer`可用なら`[bodyStart, end)`の`subarray`をBufferビューにして`indexOf`（ネイティブ。`indexOf`は終端を取らないため、ビュー側で範囲を切る）、そうでなければBoyer-Moore-Horspool風のスキップテーブル付き手書き探索（ブラウザfallback）。
 2. 各出現で「直後バイトがwhitespace/delimiter、または出現の終端が`end`に一致」を検査し、不成立なら次の出現へ。出現の終端が`end`に一致する場合（`end < bytes.length`）は直後バイトが範囲外で確定できないが、候補として採用してよい。その場合`KwEndstream`が`end`に接するため、`Lexer.boundaryDependent`により再レキシング結果は不安定と判定される（6.2節）。
 3. 成立した出現のうち「直前バイトがwhitespace6種」の最初のものを採用。1パス目で見つからなければ、記録しておいた「直後条件のみ成立の最初の出現」を採用。実装は1パスで両候補を同時に追跡する（再走査しない）。
-4. `bodyEnd`は基本設計4.3節のbodyEnd規則に従い、採用した`endstream`の直前にEOL（CRLF・LF・CR、高々1つ）があればそれを本体から除外した位置とする（除外分はWhitespaceトリビアとして`KwEndstream`に付く）。
+4. `bodyEnd`は基本設計4.3節のbodyEnd規則に従い、採用した`endstream`の直前にEOL（CRLF・LF・CR、1つ以下）があればそれを本体から除外した位置とする（除外分はWhitespaceトリビアとして`KwEndstream`に付く）。
 
 ---
 
