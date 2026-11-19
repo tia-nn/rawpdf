@@ -253,7 +253,7 @@ class LexerTest extends utest.Test {
 		checkAll(COMMENT_CASES);
 	}
 
-	// delimiter（Lexerリファレンス1章）。`<`単独・`(`はM1-4で振る舞いが変わるので、位置だけを見る
+	// delimiter（Lexerリファレンス1章）。単独の`<`（HexString）と`(`（LiteralString）は、それぞれの節で詳しく見る
 	static final DELIMITER_CASES:Array<LexCase> = [
 		whole("[は1バイトのトークン", str("["), LeftBracket),
 		whole("]は1バイトのトークン", str("]"), RightBracket),
@@ -307,8 +307,11 @@ class LexerTest extends utest.Test {
 		{
 			name: "><は<<にならない。>はUnknownで、<は次のトークンの先頭になる",
 			input: str("><"),
-			tokens: [tok(Unknown, 0, 1), anyAt(1)],
-			prefix: true
+			tokens: [
+				tok(Unknown, 0, 1),
+				tok(HexString, 1, 2, TokenFlags.UNTERMINATED),
+				tok(EndOfFile, 2, 2)
+			]
 		},
 		{
 			name: "範囲の終端（end）が>>の間にあれば、範囲外を見ずに単独の>（Unknown）になる",
@@ -320,7 +323,7 @@ class LexerTest extends utest.Test {
 			name: "範囲の終端（end）が<<の間にあれば、範囲外を見ない（<<にならず1バイトで終わる）",
 			input: str("<<"),
 			end: 1,
-			tokens: [anyAt(0, 1), tok(EndOfFile, 1, 1)]
+			tokens: [tok(HexString, 0, 1, TokenFlags.UNTERMINATED), tok(EndOfFile, 1, 1)]
 		},
 		{
 			name: "単独の)は1バイトのUnknown（Lexerリファレンス1章）",
@@ -584,5 +587,230 @@ class LexerTest extends utest.Test {
 
 	function testRegularRun() {
 		checkAll(REGULAR_RUN_CASES);
+	}
+
+	// LiteralString（Lexerリファレンス1章。エスケープの並びはISO 32000-2 7.3.4.2節）
+	static final LITERAL_STRING_CASES = flatten([
+		[
+			whole("(から、括弧の深さが0に戻る)までが1つのLiteralString", str("(abc)"), LiteralString),
+			whole("空の文字列()", str("()"), LiteralString),
+			whole("入れ子の括弧は深さに数え、外側の)で閉じる（リファレンスの例）", str("(a(b)c)"), LiteralString),
+			whole("何重に入れ子でも、深さが0に戻る)で閉じる", str("((()))"), LiteralString),
+			{
+				name: "隣り合う2つの文字列は、最初の)で切れて2つのトークンになる",
+				input: str("(a)(b)"),
+				tokens: [tok(LiteralString, 0, 3), tok(LiteralString, 3, 6), tok(EndOfFile, 6, 6)]
+			},
+		],
+		[
+			// エスケープされた括弧は深さに数えない
+			whole("エスケープされた\\)では閉じない", str("(a\\)b)"), LiteralString),
+			whole("エスケープされた\\(は深さを増やさないので、次の)で閉じる", str("(a\\(b)"), LiteralString),
+			whole("\\\\は\\のエスケープなので、直後の)は本物で、そこで閉じる（\\が偶数個）", str("(\\\\)"), LiteralString),
+			whole("\\\\\\)は\\のエスケープと\\)なので、最後の)で閉じる（\\が奇数個）", str("(\\\\\\))"), LiteralString),
+			whole("\\\\の直後の(は本物なので深さに数え、)が2つ要る", str("(\\\\(a))"), LiteralString),
+			whole("8進のエスケープ\\dddの直後の)は本物", str("(\\051)"), LiteralString),
+			whole("定義の無いエスケープ（\\x）でも、直後の)は本物", str("(\\x)"), LiteralString),
+			whole("\\と改行（行の継続）の後ろも、文字列の続き", str("(a\\\r\nb)"), LiteralString),
+		],
+		[
+			// 文字列の中身は字句解析しない
+			whole("中のdelimiter・%・空白・改行は、文字列の一部になる", str("(a%b [c]<d> /e\r\n{f})"), LiteralString),
+			whole("0x80以上のバイト（UTF-8として不正な並び）やNULも、例外にならず文字列の一部になる", bytesOf(["(".code, 0x80, 0xFF, 0xC3, 0x00, ")".code]), LiteralString),
+		],
+		[
+			// 範囲の終端で打ち切ったらUNTERMINATED。トークンは範囲の終端まで
+			{
+				name: "(だけの入力は、UNTERMINATEDの文字列",
+				input: str("("),
+				tokens: [tok(LiteralString, 0, 1, TokenFlags.UNTERMINATED), tok(EndOfFile, 1, 1)]
+			},
+			{
+				name: ")が無いまま入力が終わったら、UNTERMINATEDで入力の終わりまで",
+				input: str("(abc"),
+				tokens: [tok(LiteralString, 0, 4, TokenFlags.UNTERMINATED), tok(EndOfFile, 4, 4)]
+			},
+			{
+				name: "入れ子の内側だけが閉じて深さが0に戻らなければ、UNTERMINATED",
+				input: str("(a(b)"),
+				tokens: [tok(LiteralString, 0, 5, TokenFlags.UNTERMINATED), tok(EndOfFile, 5, 5)]
+			},
+			{
+				name: "最後の)がエスケープされていれば、UNTERMINATED",
+				input: str("(a\\)"),
+				tokens: [tok(LiteralString, 0, 4, TokenFlags.UNTERMINATED), tok(EndOfFile, 4, 4)]
+			},
+			{
+				name: "\\で入力が終われば、UNTERMINATEDで、\\も文字列に含める",
+				input: str("(abc\\"),
+				tokens: [tok(LiteralString, 0, 5, TokenFlags.UNTERMINATED), tok(EndOfFile, 5, 5)]
+			},
+		],
+		[
+			{
+				name: "範囲の終端（end）が文字列の途中にあれば、そこで止まりUNTERMINATED",
+				input: str("(abc)"),
+				end: 3,
+				tokens: [tok(LiteralString, 0, 3, TokenFlags.UNTERMINATED), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "範囲の終端（end）が\\の直後にあれば、範囲外の)を読まずにUNTERMINATED",
+				input: str("(a\\)b)"),
+				end: 3,
+				tokens: [tok(LiteralString, 0, 3, TokenFlags.UNTERMINATED), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "範囲の終端（end）がちょうど閉じる)の直後なら、閉じた文字列になる",
+				input: str("(a)b"),
+				end: 3,
+				tokens: [tok(LiteralString, 0, 3), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "範囲の開始（start）から読み始める",
+				input: str("xx(a)"),
+				start: 2,
+				tokens: [tok(LiteralString, 2, 5), tok(EndOfFile, 5, 5)]
+			},
+		],
+		[
+			{
+				name: "閉じた)の直後のregular byteは、別のトークンになる",
+				input: str("(a)b"),
+				tokens: [tok(LiteralString, 0, 3), tok(Unknown, 3, 4), tok(EndOfFile, 4, 4)]
+			},
+			{
+				name: "閉じた)の直後のNameは、別のトークンになる",
+				input: str("(a)/N"),
+				tokens: [tok(LiteralString, 0, 3), tok(Name, 3, 5), tok(EndOfFile, 5, 5)]
+			},
+			{
+				name: "深さが0に戻った後の)は、文字列の外の単独の)（Unknown）",
+				input: str("(a))"),
+				tokens: [tok(LiteralString, 0, 3), tok(Unknown, 3, 4), tok(EndOfFile, 4, 4)]
+			},
+			{
+				name: "配列の中の文字列",
+				input: str("[(a) (b)]"),
+				tokens: [
+					tok(LeftBracket, 0, 1),
+					tok(LiteralString, 1, 4),
+					tok(Whitespace, 4, 5),
+					tok(LiteralString, 5, 8),
+					tok(RightBracket, 8, 9),
+					tok(EndOfFile, 9, 9),
+				]
+			},
+		],
+		[
+			whole("長い中身でもスタックがあふれず、1つのLiteralStringになる", str("(" + [for (_ in 0...100000) "a"].join("") + ")"), LiteralString),
+			whole("深い入れ子でもスタックがあふれず、1つのLiteralStringになる", str([for (_ in 0...100000) "("].join("") + [for (_ in 0...100000) ")"].join("")), LiteralString),
+		]
+	]);
+
+	function testLiteralString() {
+		checkAll(LITERAL_STRING_CASES);
+	}
+
+	// HexString（Lexerリファレンス1章）
+	static final HEX_STRING_CASES = flatten([
+		[
+			whole("<から>までが1つのHexString（リファレンスの例）", str("<48 65>"), HexString),
+			whole("空のHexString<>", str("<>"), HexString),
+			whole("桁数が奇数でも、>までが1つのHexString", str("<4>"), HexString),
+			{
+				name: "隣り合う2つのHexStringは、最初の>で切れて2つのトークンになる",
+				input: str("<0A><0B>"),
+				tokens: [tok(HexString, 0, 4), tok(HexString, 4, 8), tok(EndOfFile, 8, 8)]
+			},
+		],
+		[
+			// 不正な文字があっても止めない
+			whole("16進数でない文字があっても、>まで読む", str("<xyz>"), HexString),
+			whole("中のdelimiter・%・空白・改行は、HexStringの一部になる", str("<4(8)%[\r\n]/6 5>"), HexString),
+			whole("中の<は入れ子にならず、最初の>で閉じる", str("<a<b>"), HexString),
+			whole("0x80以上のバイト（UTF-8として不正な並び）やNULも、例外にならずHexStringの一部になる", bytesOf(["<".code, 0x80, 0xFF, 0xC3, 0x00, ">".code]), HexString),
+		],
+		[
+			// 範囲の終端で打ち切ったらUNTERMINATED。トークンは範囲の終端まで
+			{
+				name: "<だけの入力は、UNTERMINATEDのHexString（<の次が範囲の終端）",
+				input: str("<"),
+				tokens: [tok(HexString, 0, 1, TokenFlags.UNTERMINATED), tok(EndOfFile, 1, 1)]
+			},
+			{
+				name: ">が無いまま入力が終わったら、UNTERMINATEDで入力の終わりまで",
+				input: str("<48 65"),
+				tokens: [tok(HexString, 0, 6, TokenFlags.UNTERMINATED), tok(EndOfFile, 6, 6)]
+			},
+			{
+				name: "範囲の終端（end）がHexStringの途中にあれば、そこで止まりUNTERMINATED",
+				input: str("<4865>"),
+				end: 3,
+				tokens: [tok(HexString, 0, 3, TokenFlags.UNTERMINATED), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "範囲の終端（end）がちょうど閉じる>の直後なら、閉じたHexStringになる",
+				input: str("<48>>"),
+				end: 4,
+				tokens: [tok(HexString, 0, 4), tok(EndOfFile, 4, 4)]
+			},
+			{
+				name: "範囲の開始（start）から読み始める",
+				input: str("xx<48>"),
+				start: 2,
+				tokens: [tok(HexString, 2, 6), tok(EndOfFile, 6, 6)]
+			},
+		],
+		[
+			{
+				name: "<>>は、空のHexStringと単独の>（<の次が>なので<<ではない）",
+				input: str("<>>"),
+				tokens: [tok(HexString, 0, 2), tok(Unknown, 2, 3), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "<<>は、<<と単独の>（<の次が<なのでHexStringではない）",
+				input: str("<<>"),
+				tokens: [tok(LeftDoubleAngle, 0, 2), tok(Unknown, 2, 3), tok(EndOfFile, 3, 3)]
+			},
+			{
+				name: "<の直後が空白でも、HexStringになる",
+				input: str("< 48>"),
+				tokens: [tok(HexString, 0, 5), tok(EndOfFile, 5, 5)]
+			},
+			{
+				name: "閉じた>の直後のregular byteは、別のトークンになる",
+				input: str("<48>R"),
+				tokens: [tok(HexString, 0, 4), tok(KwR, 4, 5), tok(EndOfFile, 5, 5)]
+			},
+			{
+				name: "辞書の値のHexString。閉じる>の後ろの>>は辞書の終わり",
+				input: str("<</K<0A>>>"),
+				tokens: [
+					tok(LeftDoubleAngle, 0, 2),
+					tok(Name, 2, 4),
+					tok(HexString, 4, 8),
+					tok(RightDoubleAngle, 8, 10),
+					tok(EndOfFile, 10, 10),
+				]
+			},
+			{
+				name: "閉じないHexStringは、後ろの辞書の終わり>>の最初の>で閉じる",
+				input: str("<</K<0A>>"),
+				tokens: [
+					tok(LeftDoubleAngle, 0, 2),
+					tok(Name, 2, 4),
+					tok(HexString, 4, 8),
+					tok(Unknown, 8, 9),
+					tok(EndOfFile, 9, 9),
+				]
+			},
+		],
+		[
+			whole("長い中身でもスタックがあふれず、1つのHexStringになる", str("<" + [for (_ in 0...100000) "0"].join("") + ">"), HexString),
+		]
+	]);
+
+	function testHexString() {
+		checkAll(HEX_STRING_CASES);
 	}
 }

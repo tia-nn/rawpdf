@@ -109,7 +109,8 @@ class Lexer {
 				consumeRegular();
 				kind = Name;
 			case "(".code:
-				// TODO: Literal String
+				flags = consumeLiteralString();
+				kind = LiteralString;
 		}
 
 		return {
@@ -285,6 +286,36 @@ class Lexer {
 				return TokenFlags.NONE;
 			}
 			cursor++;
+		}
+	}
+
+	/** `()` の深さが0になるまで `cursor` を進める（末尾の `)` を含む）。
+		前提: 冒頭の `(` は読み込み済み。 **/
+	function consumeLiteralString():TokenFlags {
+		var depth = 1;
+
+		while (true) {
+			switch (peek()) {
+				case null:
+					return TokenFlags.UNTERMINATED;
+				case "\\".code:
+					if (cursor + 1 < end) {
+						cursor += 2;
+					} else {
+						cursor++;
+						return TokenFlags.UNTERMINATED;
+					}
+				case "(".code:
+					cursor++;
+					depth++;
+				case ")".code:
+					cursor++;
+					if (--depth == 0) {
+						return TokenFlags.NONE;
+					}
+				default:
+					cursor++;
+			}
 		}
 	}
 }
