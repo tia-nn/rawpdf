@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -291,7 +291,7 @@ export class Lexer {
 2. `StreamBody`（長さ0もあり得る。パーサ側の構造を一様にするため常に返す）。境界は`streamBodyHints`に`bodyStart`のヒントがあり、`endstreamStart + 9 <= end`かつ`bytes[endstreamStart .. +9]`が`endstream`に一致すればそれを使い、そうでなければ`findEndstream(bytes, bodyStart, end)`（6.4節）。見つからなければ`end`まで＋`Unterminated`。
 3. 以降は構造モード。除外されたEOLはWhitespaceトリビアとして、続く`KwEndstream`に付く。
 
-構造モードの分岐は基本設計4.2節の通り。入力ごとに返すトークン種別の一覧と未決事項は`pdf-cst-lexer-spec.md`にまとめる。実装注意:
+構造モードの分岐は基本設計4.2節の通り。入力ごとに返すトークン種別の一覧はLexerリファレンス`reference/lexer.md`にまとめる。Lexerの振る舞いで未決の点があれば本節に書き、決まったらリファレンスに移す（現在なし）。実装注意:
 
 - regular runの分類は「数値判定 → 長さ別キーワード完全一致 → Unknown」の順。キーワード照合は長さでswitchしてからバイト比較（ハッシュ不要）。
 - `%`開始のコメントは、直後が`PDF-`なら`HeaderMarker`、それ以外は`Comment`トリビア（1章）。行末（CR/LF）は含まない。
@@ -530,7 +530,7 @@ tests/
 ```
 
 - テストクラスは、対象モジュールと同じパッケージに`XxxTest`の名前で置く（例: `rawpdf.cst.syntax.SyntaxKind` → `tests/rawpdf/cst/syntax/SyntaxKindTest.hx`）。特定のモジュールに対応しないパッケージ全体のテスト（スナップショット・プロパティ）は`tests/rawpdf/cst/`直下に置く。
-- 同じパッケージに置いても、Haxeでは対象の`private`なメンバーには触れない。触る必要があるときは`@:access`を使う。
+- テストは公開APIの振る舞いだけを確かめる（`testing-guide.md`4.2節）。同じパッケージに置いても、Haxeでは対象の`private`なメンバーには触れないが、`@:access`で触ることもしない。`private`な処理を直接確かめたくなったら、別のモジュールに切り出してその公開APIとしてテストする。
 
 - reparse等価性（`dumpCst(reparse(t, e)) === dumpCst(parse(splice(bytes, e)))`）をランダム編集で回すことをプロパティテストの柱とする。
 - スナップショット比較とランダム入力の生成器は自作する（統括3章）。最低限の機能: 生成器はシード値を指定して再現でき、失敗時にシード値と入力を報告する。失敗した入力を小さくする縮小（shrinking）は、必要になってから足す。
