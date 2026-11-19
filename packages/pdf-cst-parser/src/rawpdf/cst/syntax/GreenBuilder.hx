@@ -32,6 +32,7 @@ class GreenBuilder {
 
 	/**
 		引数どおりの`GreenToken`を1つ足す。
+		`leadingTrivia`は複製せずにトークンに持たせる。呼び出し側は、渡した配列を以後変更しない（`GreenToken.new`と同じ）。
 		@throws haxe.Exception `kind` が `Token` でない場合
 		@throws haxe.Exception `textLength` が0未満の場合
 	**/

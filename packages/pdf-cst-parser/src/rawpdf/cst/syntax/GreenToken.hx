@@ -12,6 +12,8 @@ class GreenToken implements GreenNode.NodeChild {
 
 	/**
 		`fullLength` は textLength + sum(leadingTrivia[...].length) で決まる。
+		`leadingTrivia` は複製せずにそのまま持つ。呼び出し側は、渡した配列を以後変更しない
+		（変更すると、作った時点で決めた `fullLength` と中身が食い違う）。
 		@throws haxe.Exception `kind` が `Token` でない場合
 		@throws haxe.Exception `textLength` が0未満の場合
 	**/

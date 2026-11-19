@@ -15,6 +15,8 @@ class GreenNode implements NodeChild {
 
 	/**
 		`fullLength` は `children[...].fullLength` の合計で決まる。
+		`children` は複製せずにそのまま持つ。呼び出し側は、渡した配列を以後変更しない
+		（変更すると、作った時点で決めた `fullLength` と中身が食い違う）。
 		@throws haxe.Exception `kind` が `Node` でない場合
 	**/
 	public function new(kind:SyntaxKind, children:ReadOnlyArray<NodeChild>) {

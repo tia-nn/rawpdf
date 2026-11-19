@@ -1,5 +1,6 @@
 package rawpdf.cst.lex;
 
+import haxe.Exception;
 import haxe.io.Bytes;
 import rawpdf.cst.syntax.SyntaxKind;
 import rawpdf.cst.syntax.TokenFlags;
@@ -27,6 +28,15 @@ typedef LexCase = {
 
 	/** `true`なら`tokens`の分だけを先頭から比べ、トークンの総数は見ない。後のタスクで振る舞いが変わるトークンが続くときに使う。 */
 	final ?prefix:Bool;
+}
+
+/** コンストラクタが例外を投げるかどうかを確かめるケース（`GreenNodeTest`の`ConstructCase`と同じ形）。 */
+private typedef ConstructCase = {
+	/** 失敗したときのメッセージに出す、ケースの説明。 */
+	final name:String;
+
+	final make:() -> Void;
+	final throws:Bool;
 }
 
 /** Lexerのテスト（根拠はLexerリファレンス`docs/reference/lexer.md`）。ケースは節ごとのテーブルにまとめる。 */
@@ -188,6 +198,73 @@ class LexerTest extends utest.Test {
 			Assert.equals(2, token.end, '$at: end（幅0）');
 			Assert.equals(TokenFlags.NONE, token.flags, '$at: flags');
 		}
+	}
+
+	// 範囲の検査（Lexer.newのdocコメント）
+
+	/** 5バイトの入力。範囲の検査はバイトの中身によらないので、中身は何でもよい。 */
+	static final RANGE_INPUT = str("abcde");
+
+	static function checkConstruct(cases:Array<ConstructCase>) {
+		for (c in cases) {
+			if (c.throws) {
+				Assert.raises(c.make, Exception, c.name);
+			} else {
+				try {
+					c.make();
+					Assert.pass(c.name);
+				} catch (e:Exception) {
+					Assert.fail('${c.name}: unexpected exception: ${e.message}');
+				}
+			}
+		}
+	}
+
+	/**
+		[Lexer.newのdocコメント] `start`が0未満、`end`が`bytes.length`より大きい、`start`が`end`より大きいときは例外。
+		省略した`start`は0、`end`は`bytes.length`として比べる。`start = end`は許す。
+		観点:
+		-         正常: 省略なし（`bytes`全体）、`{start: 0, end: bytes.length}`、途中の範囲
+		-         境目: `start` = 0（作れる）と-1（例外）、`end` = `bytes.length`（作れる）と+1（例外）、`start` = `end`（作れる）と`end` + 1（例外）
+		-     範囲の端: 範囲が末尾で空（`start` = `end` = `bytes.length`）、`end`だけ省略して`start` = `bytes.length`（作れる）と+1（例外）、`start`だけ省略して`end` = -1（例外）
+		-     空・最小: 空の入力で範囲を省略（作れる）、空の入力で`end` = 1（例外）
+		- 不正なバイト: 該当なし（バイトの中身を見ない）
+		-       大きさ: 該当なし（中身を走査しない）
+		-   仕様の細則: 省略したほうは既定値で比べる
+	**/
+	function testConstructorRange() {
+		final len = RANGE_INPUT.length;
+		checkConstruct([
+			{name: "範囲を省略 → 作れる（bytes全体）", make: () -> new Lexer(RANGE_INPUT), throws: false},
+			{name: "start 0・end bytes.length → 作れる", make: () -> new Lexer(RANGE_INPUT, {start: 0, end: len}), throws: false},
+			{name: "途中の範囲 [1, 3) → 作れる", make: () -> new Lexer(RANGE_INPUT, {start: 1, end: 3}), throws: false},
+			{name: "start -1 → 例外（0未満）", make: () -> new Lexer(RANGE_INPUT, {start: -1, end: len}), throws: true},
+			{name: "end bytes.length + 1 → 例外（bytes.lengthより大きい）", make: () -> new Lexer(RANGE_INPUT, {start: 0, end: len + 1}), throws: true},
+			{name: "start = end（途中の空の範囲） → 作れる", make: () -> new Lexer(RANGE_INPUT, {start: 2, end: 2}), throws: false},
+			{name: "start = end + 1 → 例外（startがendより大きい）", make: () -> new Lexer(RANGE_INPUT, {start: 3, end: 2}), throws: true},
+			{
+				name: "start = end = bytes.length（末尾の空の範囲） → 作れる",
+				make: () -> new Lexer(RANGE_INPUT, {start: len, end: len}),
+				throws: false
+			},
+			{
+				name: "endを省略してstart = bytes.length → 作れる（endはbytes.length）",
+				make: () -> new Lexer(RANGE_INPUT, {start: len}),
+				throws: false
+			},
+			{
+				name: "endを省略してstart = bytes.length + 1 → 例外（endはbytes.lengthなので、startがendより大きい）",
+				make: () -> new Lexer(RANGE_INPUT, {start: len + 1}),
+				throws: true
+			},
+			{
+				name: "startを省略してend -1 → 例外（startは0なので、startがendより大きい）",
+				make: () -> new Lexer(RANGE_INPUT, {end: -1}),
+				throws: true
+			},
+			{name: "空の入力で範囲を省略 → 作れる", make: () -> new Lexer(str("")), throws: false},
+			{name: "空の入力でend 1 → 例外（bytes.lengthより大きい）", make: () -> new Lexer(str(""), {end: 1}), throws: true},
+		]);
 	}
 
 	// Whitespace（Lexerリファレンス1章）

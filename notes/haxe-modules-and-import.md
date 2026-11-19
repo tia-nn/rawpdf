@@ -27,7 +27,7 @@ parse/Parser.hx       … import rawpdf.cst.syntax.GreenNode;  の1行で3つと
 
 ## このプロジェクトでの使われ方
 
-- ファイル構成: パーサ詳細設計2章
+- ファイル構成: パーサ詳細設計2章。Green木は型ごとにファイルを分けた（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）。上の具体例の1ファイルにまとめる形は採っていない。ノードの子の型`NodeChild`だけは、`GreenNode.hx`のサブタイプとして置いている（`GreenToken.hx`からは`GreenNode.NodeChild`と書いて参照する）
 - checkstyleの`FileNameCase`は「ファイル名と同じ名前の型（主型）があること」を求める。`Green.hx`に`Green`という型が無いとCIで落ちる
 - 依存方向（parser ← semantics ← lsp-editor）は`.hxml`のクラスパスで強制する（CLAUDE.md「技術スタック」）。importの書き方とは別の仕組み
 
