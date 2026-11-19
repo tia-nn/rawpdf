@@ -45,6 +45,15 @@ private typedef RootLengthCase = {
 	`@throws`に挙がっていない呼び出し方は例外を投げない、と読む。
 	期待する木は`GreenNode`・`GreenToken`・`GreenTrivia`のコンストラクタで組む。
 	それらの`fullLength`の決まり方は`GreenNodeTest`で確かめている。
+
+	観点:
+	-         正常: `<< /A 1 >>`の木、子の順番、閉じたノードの行き先、`token`の引数、`missingToken`の中身、根の`fullLength`
+	-         境目: 該当なし（字句の切れ目を持たない）
+	-     範囲の端: どのノードにも入らないトークン（ノードの前・後）、内側だけ閉じたままの`finish`、閉じすぎの`finishNode`
+	-     空・最小: 何も送らずに`finish`・`finishNode`、子0個のノード、`textLength`0
+	- 不正なバイト: 該当なし（バイト列を受け取らない）。不正な引数はtestTokenThrows・testNodeKindCheckedAtFinishNode
+	-       大きさ: 該当なし（イベントごとの処理で、再帰しない）
+	-   仕様の細則: `startNode`の`kind`は`finishNode`で検査する、検査するのは閉じるノードだけ、数えるのは最上位の要素だけ
 **/
 class GreenBuilderTest extends utest.Test {
 	// テーブルを短く書くための補助

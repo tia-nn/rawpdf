@@ -5,6 +5,7 @@ abstract TokenFlags(Int) {
 	public static inline final UNTERMINATED:TokenFlags = cast 1 << 0;
 	public static inline final MISSING:TokenFlags = cast 1 << 1;
 
+	/** フラグの和集合を返す **/
 	@:op(A | B)
 	public inline function or(a:TokenFlags):TokenFlags {
 		return cast(this | cast a);
@@ -16,6 +17,7 @@ abstract TokenFlags(Int) {
 		return (this & aa) == aa;
 	}
 
+	/** フラグが `NONE` かを判定する。 **/
 	public inline function isNone() {
 		return abstract == TokenFlags.NONE;
 	}

@@ -3,10 +3,21 @@ package rawpdf.cst.lex;
 import haxe.Exception;
 import utest.Assert;
 
-/** ByteClass.ofのテスト（パーサ基本設計4.1節・詳細設計6.1節）。 */
+/**
+	ByteClass.ofのテスト。根拠はLexerリファレンス0章（バイトの分類）と、ByteClass.ofのdocコメント（範囲外の例外）。
+
+	観点:
+	-         正常: 0〜255の全バイト（testEveryByte）、種類ごとの個数（testCounts）
+	-         境目: 該当なし（1バイトずつ分類するので、隣のバイトの影響を受けない）
+	-     範囲の端: -1・256で例外（testOutOfRangeByte）。0と255はtestEveryByteに含まれる
+	-     空・最小: 該当なし（入力は整数1つ）
+	- 不正なバイト: 0x80・0xFF（testConfusingBytes）。範囲外の値は「範囲の端」で見る
+	-       大きさ: 該当なし（表を引くだけ）
+	-   仕様の細則: NUL・VT・数値やNameに出る記号・`\`（testConfusingBytes）
+**/
 class ByteClassTest extends utest.Test {
 	/**
-		期待値。表とは別の書き方（switch）で、基本設計4.1節の分類をそのまま写す。
+		期待値。表とは別の書き方（switch）で、Lexerリファレンス0章の表をそのまま写す。
 		表の組み立てを間違えたとき、同じ間違いがここに入らないようにするため。
 	**/
 	static function expected(b:Int):ByteClass {
@@ -17,20 +28,20 @@ class ByteClassTest extends utest.Test {
 		}
 	}
 
-	/** 0〜255の全バイトが期待どおりに分類される。 */
+	/** [Lexerリファレンス0章] 0〜255の全バイトが、表のとおりに分類される。 */
 	function testEveryByte() {
 		for (b in 0...256) {
 			Assert.equals(expected(b), ByteClass.of(b), 'byte=$b');
 		}
 	}
 
-	/** -1,256でthrowされる */
+	/** [ByteClass.ofのdocコメント] 0〜255の範囲外（-1・256）は例外。 */
 	function testOutOfRangeByte() {
 		Assert.raises(() -> ByteClass.of(-1), Exception);
 		Assert.raises(() -> ByteClass.of(256), Exception);
 	}
 
-	/** 完了条件（WBS M1-2）の個数: whitespace 6種・delimiter 10種・残り240個がregular。 */
+	/** [Lexerリファレンス0章 表の「個数」の列] whitespace 6・delimiter 10・regular 240。 */
 	function testCounts() {
 		var whitespace = 0;
 		var delimiter = 0;
@@ -51,7 +62,8 @@ class ByteClassTest extends utest.Test {
 	}
 
 	/**
-		間違えやすいバイト。期待値の写し間違いがあっても、ここで気づけるように個別に書く。
+		[Lexerリファレンス0章 表と注記（`#`・`.`・`+`・`-`はregular、0x80〜0xFFもregular）] 間違えやすいバイト。
+		期待値の写し間違いがあっても、ここで気づけるように個別に書く。
 	**/
 	function testConfusingBytes() {
 		// NULは空白に入る

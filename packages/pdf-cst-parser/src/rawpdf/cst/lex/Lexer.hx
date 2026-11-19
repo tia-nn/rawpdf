@@ -2,6 +2,7 @@ package rawpdf.cst.lex;
 
 import rawpdf.cst.syntax.SyntaxKind;
 import rawpdf.cst.syntax.TokenFlags;
+import haxe.Exception;
 import haxe.io.Bytes;
 
 using StringTools;
@@ -25,12 +26,29 @@ class Lexer {
 
 	var cursor:Int;
 
-	/** `bytes` の `[start, end)` を字句解析する。`start`・`end` を省略すると `bytes` 全体。 **/
+	/**
+		`bytes` の `[start, end)` を字句解析する。`start` を省略すると0、`end` を省略すると `bytes.length`。
+		`start = end`（空の範囲）は許し、その位置の `EndOfFile` だけを返す。
+		`streamBodyHints` は複製せずにそのまま持つ。呼び出し側は、このLexerを使い終わるまで渡したMapを変更しない。
+		@throws haxe.Exception `start` が0未満の場合
+		@throws haxe.Exception `end` が `bytes.length` より大きい場合
+		@throws haxe.Exception `start` が `end` より大きい場合（省略したほうは既定値で比べる）
+	**/
 	public function new(bytes:Bytes, ?options:LexerOptions) {
 		this.bytes = bytes;
 		start = options?.start ?? 0;
 		end = options?.end ?? bytes.length;
 		streamBodyHints = options?.streamBodyHints ?? new Map();
+
+		if (start < 0) {
+			throw new Exception('Lexer.new: start should not be negative, but was $start.');
+		}
+		if (end > bytes.length) {
+			throw new Exception('Lexer.new: end should be at most bytes.length (${bytes.length}), but was $end.');
+		}
+		if (start > end) {
+			throw new Exception('Lexer.new: start ($start) should be at most end ($end).');
+		}
 
 		cursor = start;
 	}
@@ -122,7 +140,8 @@ class Lexer {
 	}
 
 	/** regular runを読み、数値・キーワード・`Unknown` に分類して返す。
-		前提: `c` は `cursor` の位置のバイトで、regular。満たさないと幅0のトークンを返す。 **/
+		前提: `c` は `cursor` の位置のバイトで、regular。
+		`c` は前提を確かめずに必ず読み進めるため、トークンは常に1バイト以上になる。 **/
 	function nextRegular(c:Int):RawToken {
 		final tokenStart = cursor++;
 		consumeRegular();

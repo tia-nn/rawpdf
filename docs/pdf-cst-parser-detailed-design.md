@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-19（`findEndstream`の探索プリミティブを、実行時の環境判定から「純HaxeのBoyer-Moore-Horspoolで始め、必要なら条件コンパイルで切り替える」に直し、基本設計4.3節・11章に合わせた: 6.4節）。2026-11-19（Green木の配列は複製せず、「渡した配列を以後変更しない」を呼び出し側の契約にした: 4.2節）。2026-11-19（Green木の型を実装に合わせた。`Green.hx`を型ごとのモジュール（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）に分け、ノードの子の型を`NodeChild`にした: 2章・4.2節）。2026-11-19（`boundaryDependent`の条件にNameとHeaderMarkerを足した: 6.2節）。2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -54,7 +54,9 @@ packages/pdf-cst-parser/
 │   ├── syntax/
 │   │   ├── SyntaxKind.hx  … SyntaxKind定義・分類ヘルパ          （旧 kind.ts）
 │   │   ├── TokenFlags.hx  … トークンのビットフラグ（4.1節）      （旧 green.ts の一部）
-│   │   ├── Green.hx       … Green木（不変・相対長）              （旧 green.ts）
+│   │   ├── GreenTrivia.hx … Green木のトリビア（4.2節）           （旧 green.ts の一部）
+│   │   ├── GreenToken.hx  … Green木のトークン（4.2節）           （旧 green.ts の一部）
+│   │   ├── GreenNode.hx   … Green木のノードと、子の型NodeChild（4.2節） （旧 green.ts の一部）
 │   │   ├── Red.hx         … Redビュー（SyntaxTree/Node/Token）    （旧 red.ts）
 │   │   └── GreenBuilder.hx … GreenBuilder（イベント型構築）      （旧 builder.ts）
 │   ├── lex/
@@ -149,7 +151,15 @@ isNone(): boolean;                // フラグが1つも立っていないか
 
 ### 4.2 Green木（`syntax/green.ts`）
 
+Haxeでは型ごとにモジュールを分ける（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`。2章）。どれも`class`とする（0章。生成数が多いため）。
+
 ```ts
+/** ノードの子になれる要素（GreenNodeとGreenToken）が共通に持つもの。Haxeでは interface NodeChild（GreenNode.hxに置く） */
+export interface NodeChild {
+  readonly kind: SyntaxKind;
+  readonly fullLength: number;
+}
+
 export interface GreenTrivia {
   readonly kind: SyntaxKind;   // Whitespace | Comment
   readonly length: number;
@@ -165,14 +175,16 @@ export interface GreenToken {
 
 export interface GreenNode {
   readonly kind: SyntaxKind;
-  readonly children: readonly (GreenNode | GreenToken)[];
+  readonly children: readonly NodeChild[];   // 実体はGreenNodeかGreenToken
   readonly fullLength: number;   // 子のfullLength合計（構築時に計算・凍結）
 }
 ```
 
+- 子の型を`GreenNode | GreenToken`のunionではなく`NodeChild`にするのは、Haxeに型のunionが無いため。`GreenTrivia`は`NodeChild`を実装しない（ノードの子にならない）。子がノードかトークンかは`kind`（`isNode()`・`isToken()`）で見分け、具体的な型が要る箇所（Red層等）では`Std.downcast`で取り出す。
 - **絶対オフセットは持たない**（基本設計5.1節）。`fullLength`の総和＝ファイルサイズが不変条件。
 - トリビアは次トークンの`leadingTrivia`（基本設計4.4節）。`EndOfFile`トークン（textLength=0）が末尾トリビアを受ける。
 - ノードの共有: reparse時に変更されなかったGreenNodeは参照ごと再利用される（===比較が「変更なし」の判定に使える）。v1ではinterning（同形ノードの重複排除）は行わない。
+- **配列は複製しない**: `GreenToken`の`leadingTrivia`と`GreenNode`の`children`は、受け取った配列をそのまま持つ。`ReadOnlyArray`は持ち主に書き換えさせないだけで、渡した側は元の`Array`を書き換えられるため、不変性は「渡した配列を以後変更しない」という呼び出し側の契約で守る（各コンストラクタと`GreenBuilder.token`のdocコメントに書く）。複製しないのは、トークンごとの配列の確保を避けるため。破ると、凍結した`fullLength`と中身が食い違い、幅不変条件が原因から離れた所で破れる。特に`TokenSource`（6.3節）で、トリビアを溜める配列をトークンをまたいで使い回すと、この契約を破る。同じ理由で、`Lexer`の`streamBodyHints`も使い終わるまで変更しない。
 
 `GreenBuilder`（`syntax/builder.ts`）はrowan流のイベント型:
 
@@ -299,12 +311,14 @@ export class Lexer {
 - `%`開始のコメントは、直後が`PDF-`なら`HeaderMarker`、それ以外は`Comment`トリビア（1章）。行末（CR/LF）は含まない。
 - サブスキャン（literal string / hex string / stream本体）が`end`に達して終了した場合は必ず`Unterminated`フラグを立てる（reparseの安定性判定が依存。基本設計5.5.1節）。
 - `boundaryDependent`は、`end < bytes.length`のとき、最後に返した要素について次のいずれかが成り立てばtrue（基本設計5.5.1節の列挙の実装）。どれも「`end`で打ち切らなければ`bytes[end]`を読んで続きを消費していた」かの判定であり、`bytes[end]`の1バイトを見るだけで決まる:
-  - `Unterminated`フラグ付きのトークン
-  - regular run（数値・キーワード・`Unknown`）が`end`に接し、`bytes[end]`がregular byte
-  - 単独の`>`が`end`に接し`bytes[end] === '>'`、または`<`で始まるトークンが`end - 1`から始まっている
-  - コメントが`end`に接し、`bytes[end]`がCR/LFでない
+  - `Unterminated`フラグ付きのトークン（`<`が`end - 1`から始まる場合も、Unterminatedの`HexString`になるのでここに含まれる）
+  - regular run（数値・キーワード・`Unknown`）または`Name`が`end`に接し、`bytes[end]`がregular byte
+  - `HeaderMarker`が`end`に接し、`bytes[end]`がCR/LFでない（`Comment`は次の「トリビアが残った」に含まれる）
+  - 単独の`>`が`end`に接し、`bytes[end] === '>'`
   - `EndOfFile`がleading triviaを持つ（範囲末尾にトリビアが残った）
   - `KwEndstream`が`end`に接している（直後バイト条件の判定に`bytes[end]`が要る）
+
+  網羅性の根拠は基本設計5.5.1節の読み方の分類。Lexerリファレンス1章の表にトークン種別を足したら、どの項目に当たるかを確かめる。
 
   `end === bytes.length`（フルパース）では範囲外が存在しないため常にfalse。
 
@@ -344,7 +358,7 @@ export function findEndstream(bytes: Uint8Array, bodyStart: number, end: number)
 
 アルゴリズム（基本設計4.3節の実装）:
 
-1. `bodyStart`から`end`までの範囲で`endstream`の出現を順次探索する。`end`を越える出現は見ない（範囲を越えて本体が伸びたことを`Unterminated`として検出するため。基本設計4.3節 Step 2）。探索プリミティブは環境判定で選ぶ: `Buffer.isBuffer`可用なら`[bodyStart, end)`の`subarray`をBufferビューにして`indexOf`（ネイティブ。`indexOf`は終端を取らないため、ビュー側で範囲を切る）、そうでなければBoyer-Moore-Horspool風のスキップテーブル付き手書き探索（ブラウザfallback）。
+1. `bodyStart`から`end`までの範囲で`endstream`の出現を順次探索する。`end`を越える出現は見ない（範囲を越えて本体が伸びたことを`Unterminated`として検出するため。基本設計4.3節 Step 2）。探索プリミティブは、まず純HaxeのBoyer-Moore-Horspool風のスキップテーブル付き探索で実装する（ターゲット非依存。統括3章）。M6-1のベンチマークで予算（基本設計2.3.1節）に届かないとわかった場合に限り、この関数の中だけを条件コンパイル（`#if js`）でJSターゲット向けの`Buffer.indexOf`に切り替えてよい（基本設計4.3節・11章）。その場合も、実行時の環境判定はせず、ほかのターゲットでは純Haxeの実装を使う。`indexOf`は探索の終端を取らないため、`[bodyStart, end)`のビューを作って範囲を切る。
 2. 各出現で「直後バイトがwhitespace/delimiter、または出現の終端が`end`に一致」を検査し、不成立なら次の出現へ。出現の終端が`end`に一致する場合（`end < bytes.length`）は直後バイトが範囲外で確定できないが、候補として採用してよい。その場合`KwEndstream`が`end`に接するため、`Lexer.boundaryDependent`により再レキシング結果は不安定と判定される（6.2節）。
 3. 成立した出現のうち「直前バイトがwhitespace6種」の最初のものを採用。1パス目で見つからなければ、記録しておいた「直後条件のみ成立の最初の出現」を採用。実装は1パスで両候補を同時に追跡する（再走査しない）。
 4. `bodyEnd`は基本設計4.3節のbodyEnd規則に従い、採用した`endstream`の直前にEOL（CRLF・LF・CR、1つ以下）があればそれを本体から除外した位置とする（除外分はWhitespaceトリビアとして`KwEndstream`に付く）。
