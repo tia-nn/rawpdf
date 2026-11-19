@@ -7,7 +7,8 @@ class TestMain {
 			new rawpdf.cst.syntax.GreenNodeTest(),
 			new rawpdf.cst.syntax.GreenBuilderTest(),
 			new rawpdf.cst.lex.ByteClassTest(),
-			new rawpdf.cst.lex.LexerTest()
+			new rawpdf.cst.lex.LexerTest(),
+			new rawpdf.cst.lex.TokenSourceTest()
 		]);
 	}
 }
