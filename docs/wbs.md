@@ -51,7 +51,7 @@
   - 完了条件: `lex/ByteClass.hx`の256要素テーブルが、whitespace 6種・delimiter 10種・それ以外regularに分類されることをテストで確認
   - 前提: なし
   - 参照: 基本4.1、詳細6.1
-- [ ] **M1-3 Lexer: 構造モードの基本トークン**
+- [x] **M1-3 Lexer: 構造モードの基本トークン**
   - 完了条件: whitespace・コメント・`HeaderMarker`・`[` `]` `{` `}` `<<` `>>`・単独`>`（Unknown）・Name・regular run（Integer/Real/キーワード/Unknown）について、基本4.2節の各ケースのunitテストが通る
   - 前提: M1-1, M1-2
   - 参照: 基本4.2、詳細6.2

@@ -23,9 +23,6 @@
 			"type": "CatchParameterName"
 		},
 		{
-			"type": "CommentedOutCode"
-		},
-		{
 			"type": "ConditionalCompilation"
 		},
 		{
@@ -179,7 +176,10 @@
 			"type": "StringLiteral"
 		},
 		{
-			"type": "Trace"
+			"type": "Trace",
+			"props": {
+				"severity": "WARNING"
+			}
 		},
 		{
 			"type": "TypeName"

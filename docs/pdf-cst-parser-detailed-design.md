@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-17（バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -15,6 +15,7 @@
 | 擬似表記（TS風） | Haxe | 注意 |
 |---|---|---|
 | 数値constオブジェクト＋union（`SyntaxKind`） | `enum abstract SyntaxKind(Int)` | 実行時は`Int`のまま。分類ヘルパ（`isTrivia`等）は`enum abstract`のメソッドにできる |
+| ビットフラグ（数値constオブジェクト＋`number`。`TokenFlags`） | `abstract X(Int)`＋`static inline`の定数＋`@:op(A \| B)`＋`has` | `enum abstract`にしない（合成値が列挙に無い値になる）。`from`/`to`は付けない。4.1節 |
 | 文字列リテラルのunion（診断コード、`'page' \| 'pages'`等） | `enum abstract X(String)` | |
 | 判別共用体（`{ type: 'ref', ... } \| ...`。`PdfValue`等） | `enum`（代数的データ型）＋`switch`のパターンマッチ | 網羅性をコンパイラが検査する |
 | `interface`（データの形） | `typedef`の構造型、または`@:structInit class` | 生成数が多い型（トークン等）は`class`の方が速い（JSで形が固定されるため） |
@@ -52,12 +53,14 @@ packages/pdf-cst-parser/
 ├── src/rawpdf/cst/                  … Haxeのパッケージ rawpdf.cst（ターゲット非依存の純Haxe）
 │   ├── syntax/
 │   │   ├── SyntaxKind.hx  … SyntaxKind定義・分類ヘルパ          （旧 kind.ts）
+│   │   ├── TokenFlags.hx  … トークンのビットフラグ（4.1節）      （旧 green.ts の一部）
 │   │   ├── Green.hx       … Green木（不変・相対長）              （旧 green.ts）
 │   │   ├── Red.hx         … Redビュー（SyntaxTree/Node/Token）    （旧 red.ts）
 │   │   └── GreenBuilder.hx … GreenBuilder（イベント型構築）      （旧 builder.ts）
 │   ├── lex/
 │   │   ├── ByteClass.hx   … バイト分類テーブル                   （旧 byte-class.ts）
-│   │   ├── Lexer.hx       … トークナイザ本体                     （旧 lexer.ts）
+│   │   ├── RawToken.hx    … Lexerが返すトークン（6.2節）         （旧 lexer.ts の一部）
+│   │   ├── Lexer.hx       … トークナイザ本体・LexerOptions・StreamBodyHint （旧 lexer.ts）
 │   │   ├── StreamBoundary.hx … endstream探索                    （旧 stream-boundary.ts）
 │   │   └── TokenSource.hx … トリビア吸着・先読みバッファ         （旧 token-source.ts）
 │   ├── parse/
@@ -122,15 +125,31 @@ export function isKeyword(k: SyntaxKind): boolean;
 
 ## 4. Green層（`syntax/green.ts`）
 
-```ts
-// const enumは使わない方針（3章と同じ理由）に合わせ、constオブジェクトで定義するビットフラグ
-export const TokenFlags = {
-  None: 0,
-  Unterminated: 1 << 0, // EOF/範囲末尾で打ち切られた（string/stream等）
-  Missing: 1 << 1,      // 幅ゼロの合成トークン
-} as const;
-export type TokenFlags = number; // ビットORの合成値を取るためnumber
+### 4.1 TokenFlags（`syntax/TokenFlags.hx`）
 
+トークンの属性を表すビットフラグの集合。Green（`GreenToken`）・Red（`SyntaxToken`）・`GreenBuilder`・Lexer（`RawToken`）・TokenSource（`CookedToken`）が使うため、Green層の他の型とは分けて独立したモジュールにする（`lex/`に置くと`syntax/`が`lex/`に依存し、2章の依存の向きと逆になる）。
+
+```ts
+/** Haxeでは abstract TokenFlags(Int)（enum abstractではない。0章）。from/toは付けない */
+static NONE: TokenFlags;          // 0
+static UNTERMINATED: TokenFlags;  // 1 << 0。EOF/範囲末尾で打ち切られた（string/stream等）
+static MISSING: TokenFlags;       // 1 << 1。幅ゼロの合成トークン
+
+// TokenFlagsのメソッド（inline可）
+or(a: TokenFlags): TokenFlags;    // @:op(A | B)。合成
+has(a: TokenFlags): boolean;      // aのフラグをすべて含むか。has(NONE)は常にtrue
+isNone(): boolean;                // フラグが1つも立っていないか
+```
+
+- 値は「どれか1つ」ではなく「立っているフラグの集合」なので、`enum abstract`にしない。合成値（`UNTERMINATED | MISSING`）が列挙に無い値になり、`switch`の網羅性検査の前提と合わないためである。
+- `from Int`/`to Int`/`@:to Bool`は付けない。`var f:TokenFlags = 3;`や、`Bool`を受け取る引数へ黙って渡すことをコンパイルエラーにする。判定は`has`・`isNone`だけを入口にし、ビット演算を型の外に出さない。
+- `has`は「すべて含むか」（`(this & a) == a`）。1フラグを渡す限り「どれか含むか」と同じ結果になる。「どれか」が必要になったら別名のメソッド（`hasAny`等）を足し、`has`の意味は変えない。
+- 「フラグ無し」の判定は`isNone()`で書く（`has(NONE)`は常にtrueなので使わない）。
+- 本文中の`Unterminated`・`Missing`フラグは、それぞれ`UNTERMINATED`・`MISSING`を指す。
+
+### 4.2 Green木（`syntax/green.ts`）
+
+```ts
 export interface GreenTrivia {
   readonly kind: SyntaxKind;   // Whitespace | Comment
   readonly length: number;
@@ -216,13 +235,8 @@ export class SyntaxToken {
 ### 6.1 バイト分類（`byte-class.ts`）
 
 ```ts
-/** Haxeでは enum abstract ByteClass(Int)（0章）。値は Regular / Whitespace / Delimiter の3つ */
+/** Haxeでは enum abstract ByteClass(Int)（0章）。値は Regular / Whitespace / Delimiter の3つ。判定は == か switch で行う */
 export type ByteClass = Regular | Whitespace | Delimiter;
-
-// ByteClassのメソッド（inline）
-isRegular(): boolean;
-isWhitespace(): boolean;
-isDelimiter(): boolean;
 
 /** バイト値 b（0〜255）の分類を返す。範囲外は例外。inlineにしない */
 static of(b: number): ByteClass;
@@ -233,7 +247,7 @@ static TABLE: readonly ByteClass[]; // 256要素。添字はバイト値
 
 `TABLE`はモジュール初期化時に基本設計4.1節の分類で埋める（全要素を`Regular`で作り、whitespace 6個・delimiter 10個を上書きする）。表は非公開とし、外からの入口は`of`だけにする。ホットループは`of`だけを使う。表の持ち方（`ReadOnlyArray`か`haxe.io.Bytes`か等）を後で変えても、影響を`ByteClass.hx`の中に閉じ込めるためである。値の数値（0・1・2）には依存しない。
 
-**`of`の引数は0〜255に限り、範囲外（EOF等の番兵値 -1、256以上）を渡すと例外を投げる**。範囲外の値を渡すのは呼び出し側（Lexer）のバグであり、入力のPDFからは起こらない（Lexerは`Bytes.get`の戻り値＝必ず0〜255だけを渡し、EOFの判定は`of`を呼ぶ前に行う）。したがってこの例外は基本設計2.1節のerror-tolerant要件（壊れた入力でクラッシュしない）とは衝突しない。検査を省いた場合、範囲外の結果はターゲットごとに異なり（JSでは`null`になり`is*`がすべて`false`、静的ターゲットでは`Regular`になり得る）、EOF判定の漏れが気づかれないまま誤った字句解析になる。例外にして、こうした呼び出し側のバグをテストで早く見つけられるようにする。範囲外で例外になることは単体テストで確認する。
+**`of`の引数は0〜255に限り、範囲外（EOF等の番兵値 -1、256以上）を渡すと例外を投げる**。範囲外の値を渡すのは呼び出し側（Lexer）のバグであり、入力のPDFからは起こらない（Lexerは`Bytes.get`の戻り値＝必ず0〜255だけを渡し、EOFの判定は`of`を呼ぶ前に行う）。したがってこの例外は基本設計2.1節のerror-tolerant要件（壊れた入力でクラッシュしない）とは衝突しない。検査を省いた場合、範囲外の結果はターゲットごとに異なり（JSでは`null`になりどの値とも一致しない、静的ターゲットでは`Regular`になり得る）、EOF判定の漏れが気づかれないまま誤った字句解析になる。例外にして、こうした呼び出し側のバグをテストで早く見つけられるようにする。範囲外で例外になることは単体テストで確認する。
 
 性能: 範囲検査（比較2回）と関数呼び出しが毎バイト入る。`inline`にすると呼び出しのたびに`throw`を含む本体が展開されるため、現時点では付けない。M6-1のベンチマークで性能予算（統括設計）に対して効いているとわかった場合に限り、`inline`化、または検査を外して範囲外の扱いを未定義に戻す（その場合はLexerのテストで範囲外を渡さないことを守る）ことを検討する。
 
@@ -277,7 +291,7 @@ export class Lexer {
 2. `StreamBody`（長さ0もあり得る。パーサ側の構造を一様にするため常に返す）。境界は`streamBodyHints`に`bodyStart`のヒントがあり、`endstreamStart + 9 <= end`かつ`bytes[endstreamStart .. +9]`が`endstream`に一致すればそれを使い、そうでなければ`findEndstream(bytes, bodyStart, end)`（6.4節）。見つからなければ`end`まで＋`Unterminated`。
 3. 以降は構造モード。除外されたEOLはWhitespaceトリビアとして、続く`KwEndstream`に付く。
 
-構造モードの分岐は基本設計4.2節の通り。実装注意:
+構造モードの分岐は基本設計4.2節の通り。入力ごとに返すトークン種別の一覧と未決事項は`pdf-cst-lexer-spec.md`にまとめる。実装注意:
 
 - regular runの分類は「数値判定 → 長さ別キーワード完全一致 → Unknown」の順。キーワード照合は長さでswitchしてからバイト比較（ハッシュ不要）。
 - `%`開始のコメントは、直後が`PDF-`なら`HeaderMarker`、それ以外は`Comment`トリビア（1章）。行末（CR/LF）は含まない。
@@ -331,7 +345,7 @@ export function findEndstream(bytes: Uint8Array, bodyStart: number, end: number)
 1. `bodyStart`から`end`までの範囲で`endstream`の出現を順次探索する。`end`を越える出現は見ない（範囲を越えて本体が伸びたことを`Unterminated`として検出するため。基本設計4.3節 Step 2）。探索プリミティブは環境判定で選ぶ: `Buffer.isBuffer`可用なら`[bodyStart, end)`の`subarray`をBufferビューにして`indexOf`（ネイティブ。`indexOf`は終端を取らないため、ビュー側で範囲を切る）、そうでなければBoyer-Moore-Horspool風のスキップテーブル付き手書き探索（ブラウザfallback）。
 2. 各出現で「直後バイトがwhitespace/delimiter、または出現の終端が`end`に一致」を検査し、不成立なら次の出現へ。出現の終端が`end`に一致する場合（`end < bytes.length`）は直後バイトが範囲外で確定できないが、候補として採用してよい。その場合`KwEndstream`が`end`に接するため、`Lexer.boundaryDependent`により再レキシング結果は不安定と判定される（6.2節）。
 3. 成立した出現のうち「直前バイトがwhitespace6種」の最初のものを採用。1パス目で見つからなければ、記録しておいた「直後条件のみ成立の最初の出現」を採用。実装は1パスで両候補を同時に追跡する（再走査しない）。
-4. `bodyEnd`は基本設計4.3節のbodyEnd規則に従い、採用した`endstream`の直前にEOL（CRLF・LF・CR、高々1つ）があればそれを本体から除外した位置とする（除外分はWhitespaceトリビアとして`KwEndstream`に付く）。
+4. `bodyEnd`は基本設計4.3節のbodyEnd規則に従い、採用した`endstream`の直前にEOL（CRLF・LF・CR、1つ以下）があればそれを本体から除外した位置とする（除外分はWhitespaceトリビアとして`KwEndstream`に付く）。
 
 ---
 

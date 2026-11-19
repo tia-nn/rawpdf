@@ -53,6 +53,7 @@ PRの範囲について:
 - 返り値の型は推論に任せて良い。明記は任意。本体が長くて型がすぐ読み取れないときは明記する。
 - ミュータブルにする必要がなければ基本的に `final` をつける。
 - 中身のコードを見て意図が明確で、1行で書ける関数には `inline` をつける。
+- `rawpdf.cst`はnull safety（`nullSafety(Strict)`）の下で書く。`build.hxml`（`npm test`とCIの最初に通る）と`display.hxml`（エディタ）で有効にしている。nullになり得る値は`Null<T>`で表し、nullを調べてから`T`の変数に代入する（`notes/haxe-null-and-readonly-view.md`）。
 
 ### フォーマッタ・リンターの設定の意図
 
@@ -65,6 +66,9 @@ PRの範囲について:
   - 型注釈を求めるもの（`Return`・`VarTypeHint`・`Type`）: 上の「返り値の型は推論に任せて良い」に合わせる
   - ドキュメントコメントを求めるもの（`FieldDocComment`・`TypeDocComment`・`DocCommentStyle`）: 書くかどうかは人が判断する
   - パーサやテストで誤検出が多いもの（`MagicNumber`・`CyclomaticComplexity`・`ReturnCount`・`TODOComment`・`AvoidTernaryOperator`・`MultipleStringLiterals`・`CodeSimilarity`）: バイト値や字句解析の大きな`switch`が普通に出てくるため
+  - `CommentedOutCode`: `// TODO: Hex String`のような実装途中の目印のコメントまで、コードをコメントアウトしたものと誤検出するため
+- 警告（`WARNING`）に下げているチェックと理由:
+  - `Trace`: 実装中のデバッグ出力（`trace`）でCIを落とさないため。残したままにしないよう、警告として見えるようにはしておく
 - 命名: 普通のフィールドはcamelCase、enumのコンストラクタはPascalCase。abstractのフィールドはどちらも許す（`enum abstract`の値と普通のフィールドを設定で区別できないため）。`static inline`の定数はUPPER_CASE、`static final`はUPPER_CASEとcamelCaseのどちらも許す
 - VS Codeのhaxe-checkstyle拡張が同梱するcheckstyleは、lixで固定した版より古いことがある。結果が食い違ったら`npm run lint`を正とする
 

@@ -2,5 +2,6 @@
 --dce full
 --js bin/build.js
 --macro include("rawpdf.cst")
+--macro nullSafety("rawpdf.cst", Strict)
 
 rawpdf.cst.Cst
