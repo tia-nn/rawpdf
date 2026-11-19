@@ -290,6 +290,7 @@ class Lexer {
 	}
 
 	/** `()` の深さが0になるまで `cursor` を進める（末尾の `)` を含む）。
+		`\` が範囲の最後の1バイトなら、`\` まで含めて `UNTERMINATED` を返す。
 		前提: 冒頭の `(` は読み込み済み。 **/
 	function consumeLiteralString():TokenFlags {
 		var depth = 1;
