@@ -55,6 +55,7 @@ PRの範囲について:
 - ミュータブルにする必要がなければ基本的に `final` をつける。
 - 中身のコードを見て意図が明確で、1行で書ける関数には `inline` をつける。
 - `rawpdf.cst`はnull safety（`nullSafety(Strict)`）の下で書く。`build.hxml`（`npm test`とCIの最初に通る）と`display.hxml`（エディタ）で有効にしている。nullになり得る値は`Null<T>`で表し、nullを調べてから`T`の変数に代入する（`notes/haxe-null-and-readonly-view.md`）。
+- 例外を投げる条件（統括設計4章 原則1）は、docコメントの`@throws haxe.Exception 条件`で書く。条件1つにつき1行とし、呼び出し側から見える言葉（引数の名前・送ったイベントなど）で書く。privateなフィールドの名前は使わない。実行時に通らない分岐（null safetyを通すためだけの検査など）の例外は書かない。
 
 ### フォーマッタ・リンターの設定の意図
 

@@ -13,3 +13,5 @@
 - [stream境界キャッシュ（StreamBodyHint）](stream-boundary-cache.md) — 再パースでstream本体の境界を前回の結果から再利用し、巨大な本体の再走査を避ける
 - [Haxeのnull許容と読み取り専用ビュー](haxe-null-and-readonly-view.md) — `Null<T>`＋`?.`・`??`で省略可能な値、`@:forward`の`abstract`か関数型で書き換えさせないMap。標準ライブラリだけで書く
 - [手書きレキサーと最長一致](hand-written-lexer.md) — カーソルと先頭バイトの分岐で1トークンずつ切り出す。終わりは読めるだけ長く読んで決め、必ず1バイト以上進める
+- [イベント型ビルダー](event-builder.md) — パーサは「開始・トークン・終了」を送るだけにし、ビルダーが2本のスタックでGreen木に組む。エラー回復の経路でも木が崩れない
+- [Haxeのモジュールとimport](haxe-modules-and-import.md) — 1ファイル1モジュールに複数の型。モジュールをimportすればサブタイプも見え、同じパッケージはimport不要
