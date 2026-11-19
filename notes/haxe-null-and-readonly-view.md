@@ -38,6 +38,38 @@ if (x == null) return …;   // ここで抜ける
 final c:Int = x;           // 検査済みなので、nullSafetyの下でも通る
 ```
 
+### 検査済みでも、型推論には`Null`が残る
+
+null safetyが「検査済み」と扱うのは、**null safetyの検査の中だけ**である。変数の型そのものは`Null<T>`のまま変わらない。そのため、型引数を推論する場面では`Null<T>`が使われる。
+
+よく引っかかるのは、ジェネリックな`inline`関数に渡したときである。たとえばJSターゲットの`Std.downcast`は次の形をしている。
+
+```haxe
+// 標準ライブラリ（js/_std/Std.hx）。返り値がNull<S>ではなくS
+static inline function downcast<T:{}, S:T>(value:T, c:Class<S>):S
+	return if (...) cast value else null;
+```
+
+```haxe
+// 形だけ
+final node = children.pop();     // Null<NodeChild>
+if (node == null) throw …;       // null safetyはここから先を「nullでない」と扱う
+Std.downcast(node, GreenNode);   // それでも T = Null<NodeChild> と推論される
+```
+
+`inline`なので、本体が呼び出し箇所に展開されてからnull safetyが検査する。展開された`cast value`は「nullableな値（`T = Null<NodeChild>`）のキャスト」に見え、`Null safety: Cannot cast nullable value to not nullable type.`になる。受け取る変数に`Null<GreenNode>`と注釈を付けても、渡す側の`T`は変わらないので直らない。
+
+直し方は、渡すところで**型チェック式**`(式 : 型)`を使い、nullでない型として渡すことである。
+
+```haxe
+// 形だけ
+final root:Null<GreenNode> = Std.downcast((node : NodeChild), GreenNode);
+```
+
+`(node : NodeChild)`は「この式を`NodeChild`型として扱う」とコンパイラに伝える。nullの検査の後なので、null safetyはこれを許す。`T`は`NodeChild`と推論され、展開された`cast`も通る。`Std.downcast`の返り値はnullになり得る（失敗するとnull）ので、受け取る側は`Null<…>`にしてnullを調べる。
+
+もう1つの注意点: null safetyは**配列の長さを追わない**。`if (a.length != 1) throw …;`の後でも、`a.pop()`は`Null<T>`のままである。実行時には通らない分岐でも、nullの検査は省けない。
+
 ### 「無いかもしれない値」の実行時コスト: `Option`・`Null<Int>`・番兵値
 
 ホットループ（レキサーの「次のバイトを覗く」など、全バイトに対して呼ばれる処理）では、「無い」の表し方で速さが大きく変わる。
@@ -85,6 +117,7 @@ final c:Int = x;           // 検査済みなので、nullSafetyの下でも通�
 - パーサ詳細設計0章: `T | null`・`x?: T`を`Null<T>`・`?x:T`に読み替える。`ReadonlyMap`もこの節の方法で表す
 - パーサ詳細設計2章: `src/`は標準ライブラリのみ
 - 詳細設計6.2節: `LexerOptions`と`streamBodyHints`
+- `GreenBuilder.finish`: `children.pop()`の結果を`GreenNode`に変換するところで、上の「型推論には`Null`が残る」に当たった
 
 ## 関連
 

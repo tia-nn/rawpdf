@@ -142,6 +142,54 @@ class LexerTest extends utest.Test {
 		}
 	}
 
+	// EndOfFile（Lexerリファレンス1章）
+	static final END_OF_FILE_CASES:Array<LexCase> = [
+		{
+			name: "空の入力は、位置0のEndOfFileだけ",
+			input: str(""),
+			tokens: [tok(EndOfFile, 0, 0)]
+		},
+		{
+			name: "範囲が空（start = end）なら、その位置のEndOfFileだけ。範囲外のバイトは読まない",
+			input: str("abc"),
+			start: 1,
+			end: 1,
+			tokens: [tok(EndOfFile, 1, 1)]
+		},
+	];
+
+	/**
+		[Lexerリファレンス1章 EndOfFile]・[Lexer.nextのdocコメント] 範囲の終端では幅0のEndOfFileを返す。
+		ほかのトークンの後ろのEndOfFileは、各テストのケースの末尾で見ている。
+		観点:
+		-         正常: 空の入力
+		-         境目: 該当なし（幅0で、切れ目を持たない）
+		-     範囲の端: 範囲が空（`start` = `end`）で、範囲外にバイトがある
+		-     空・最小: 空の入力
+		- 不正なバイト: 該当なし（バイトを読まない）
+		-       大きさ: 該当なし（幅0）
+		-   仕様の細則: 何度呼ばれても返し続ける（testEndOfFileRepeats）
+	**/
+	function testEndOfFile() {
+		checkAll(END_OF_FILE_CASES);
+	}
+
+	/** [Lexerリファレンス1章 EndOfFile]・[Lexer.nextのdocコメント] 範囲の終端に達した後は、何度呼んでも同じ位置の幅0のEndOfFileを返す。観点の表はtestEndOfFile。 */
+	function testEndOfFileRepeats() {
+		// 入力"ab c"の範囲[0, 2)。前にトークン（ab）があり、範囲外（" c"）がある
+		final lexer = new Lexer(str("ab c"), {end: 2});
+		final first = lexer.next();
+		Assert.equals(Unknown, first.kind, "最初のトークンはab（Unknown）");
+		for (i in 1...5) {
+			final token = lexer.next();
+			final at = 'EndOfFileの${i}回目';
+			Assert.equals(EndOfFile, token.kind, '$at: kind');
+			Assert.equals(2, token.start, '$at: start（範囲の終端）');
+			Assert.equals(2, token.end, '$at: end（幅0）');
+			Assert.equals(TokenFlags.NONE, token.flags, '$at: flags');
+		}
+	}
+
 	// Whitespace（Lexerリファレンス1章）
 	static final WHITESPACE_CASES = flatten([
 		[
@@ -178,6 +226,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス1章 Whitespace]
+		観点:
+		-         正常: 空白6種それぞれの1バイト、6種が混ざった連続
+		-         境目: 空白でないバイトの手前で止まる、空白でないトークンの後ろから始まる
+		-     範囲の端: 入力の末尾、`end`が空白の途中、`start`から読み始める
+		-     空・最小: 1バイト（6種それぞれ）
+		- 不正なバイト: 該当なし（空白6種以外は空白にならない。「境目」で見る）
+		-       大きさ: 0x00が100000個
+		-   仕様の細則: NULも空白（6種の1バイトのケースに含まれる）
+	**/
 	function testWhitespace() {
 		checkAll(WHITESPACE_CASES);
 	}
@@ -220,6 +279,8 @@ class LexerTest extends utest.Test {
 			whole("PDF-がちょうど入力の終わりに達する場合も、範囲内に収まるのでHeaderMarker", str("%PDF-"), HeaderMarker),
 			whole("%PDF-の後ろのバイトに条件は付けない", str("%PDF-abc"), HeaderMarker),
 			whole("大文字・小文字は区別する", str("%pdf-1.7"), Comment),
+			whole("0x80以上のバイト（UTF-8として不正な並び）も、例外にならずコメントの一部になる", bytesOf(["%".code, 0x80, 0xFF, 0xC3]), Comment),
+			whole("長いコメントでもスタックがあふれず、1つのCommentになる", str("%" + [for (_ in 0...100000) "a"].join("")), Comment),
 			{
 				name: "ファイルの途中の%PDF-もHeaderMarkerになる（Lexerリファレンス1章: 位置を問わない）",
 				input: str("\n%PDF-2.0"),
@@ -249,6 +310,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス1章 Comment・HeaderMarker]
+		観点:
+		-         正常: コメント、`%%EOF`、`%PDF-1.7`のHeaderMarker
+		-         境目: LF・CRの手前で止まる、CRLFは後ろのWhitespace、中のdelimiter・空白はコメントの一部
+		-     範囲の端: 改行の無い末尾、`end`がコメントの途中、`end`が`PDF-`の途中（1〜4）、`PDF-`がちょうど入力の終わり
+		-     空・最小: 空のコメント、`%`だけ、`%`の後ろが4バイト未満
+		- 不正なバイト: 0x80以上・UTF-8として不正な並び
+		-       大きさ: 長いコメント（100000バイト）
+		-   仕様の細則: 大文字・小文字の区別、`PDF-`の後ろに条件なし、ファイルの途中の`%PDF-`
+	**/
 	function testCommentAndHeaderMarker() {
 		checkAll(COMMENT_CASES);
 	}
@@ -347,6 +419,17 @@ class LexerTest extends utest.Test {
 		},
 	];
 
+	/**
+		[Lexerリファレンス1章 LeftBracket〜RightDoubleAngle・Unknown]
+		観点:
+		-         正常: `[` `]` `{` `}` `<<` `>>`、連続したdelimiter
+		-         境目: `<<<<`、`> >`、`>>>`、`><`、空白をはさんだ辞書・配列
+		-     範囲の端: `end`が`>>`・`<<`の間、単独の`>`が入力の末尾
+		-     空・最小: 1バイトのdelimiterそれぞれ
+		- 不正なバイト: 単独の`>`・`)`はUnknown
+		-       大きさ: 該当なし（どれも1〜2バイトの固定長）
+		-   仕様の細則: 単独の`<`と`(`は、testHexString・testLiteralStringで見る
+	**/
 	function testDelimiters() {
 		checkAll(DELIMITER_CASES);
 	}
@@ -384,6 +467,7 @@ class LexerTest extends utest.Test {
 			},
 			whole("#xxは解釈せず、# - .もregular byteとしてNameに含める", str("/A#20B-c.d"), Name),
 			whole("0x80以上のバイト（UTF-8として不正な並びを含む）も、例外にならずNameに含まれる", bytesOf(["/".code, 0x80, 0xFF, 0xC3, 0xE3]), Name),
+			whole("長いNameでもスタックがあふれず、1つのNameになる", str("/" + [for (_ in 0...100000) "A"].join("")), Name),
 			{
 				name: "範囲の終端（end）がNameの途中にあれば、そこで止まる",
 				input: str("/Type"),
@@ -423,6 +507,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス1章 Name]
+		観点:
+		-         正常: `/Type`、辞書の中のName
+		-         境目: 空白6種・delimiter 10種の手前で終わる、`/A/B`、`//`
+		-     範囲の端: `end`がNameの途中、`end`が`/`の直後、`/`だけの入力
+		-     空・最小: 空のName（`/`だけ、`/`の直後が空白、`//`）
+		- 不正なバイト: 0x80以上・UTF-8として不正な並び
+		-       大きさ: 長いName（100000バイト）
+		-   仕様の細則: `#xx`を解釈しない、数字やキーワードと同じ並びでもName
+	**/
 	function testName() {
 		checkAll(NAME_CASES);
 	}
@@ -529,6 +624,7 @@ class LexerTest extends utest.Test {
 				prefix: true
 			},
 			whole("0x80以上のバイトを含むrunも、例外にならずUnknownになる", bytesOf(["R".code, 0xFF, 0x80, 0xC3]), Unknown),
+			whole("長いrun（数字だけ）でもスタックがあふれず、1つのIntegerになる", str([for (_ in 0...100000) "1"].join("")), Integer),
 			{
 				name: "間接参照1 0 Rは、Integer・Integer・KwRに分かれる",
 				input: str("1 0 R"),
@@ -585,6 +681,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス2章 regular runの分類]
+		観点:
+		-         正常: Integer・Real・キーワード13種（`stream`は先頭だけ）、間接参照、オブジェクトの見出し
+		-         境目: delimiterの手前で終わる、delimiterと隣り合う数値、Nameの直後の数値・キーワード
+		-     範囲の端: `end`がrunの途中なら、切ってから分類する
+		-     空・最小: 1バイトのrun（`0`・`R`・`n`・`f`・`+`・`-`・`.`）
+		- 不正なバイト: 0x80以上を含むrun
+		-       大きさ: 長いrun（数字100000個）
+		-   仕様の細則: 符号・`.`の数と位置、指数・基数表記、数字と英字の混在、大文字・小文字、前方一致でないこと
+	**/
 	function testRegularRun() {
 		checkAll(REGULAR_RUN_CASES);
 	}
@@ -707,6 +814,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス1章 LiteralString]・[ISO 32000-2 7.3.4.2節]（エスケープの並び）
+		観点:
+		-         正常: `(abc)`、入れ子、隣り合う2つ、配列の中
+		-         境目: 閉じた`)`の直後のregular byte・Name、深さ0に戻った後の`)`
+		-     範囲の端: `)`が無いまま終わる、`\`で終わる、`end`が途中・`\`の直後・ちょうど`)`の直後、`start`から読み始める
+		-     空・最小: `()`、`(`だけ
+		- 不正なバイト: 0x80以上・UTF-8として不正な並び・NUL
+		-       大きさ: 長い中身、深い入れ子（100000）
+		-   仕様の細則: エスケープされた括弧、`\`の偶奇、`\ddd`、定義の無いエスケープ、行の継続、中身を字句解析しない
+	**/
 	function testLiteralString() {
 		checkAll(LITERAL_STRING_CASES);
 	}
@@ -810,6 +928,17 @@ class LexerTest extends utest.Test {
 		]
 	]);
 
+	/**
+		[Lexerリファレンス1章 HexString]
+		観点:
+		-         正常: `<48 65>`、奇数桁、隣り合う2つ、辞書の値
+		-         境目: `<>>`、`<<>`、`<`の直後が空白、閉じた`>`の直後のregular byte、閉じないHexStringは後ろの`>>`の最初の`>`で閉じる
+		-     範囲の端: `>`が無いまま終わる、`end`が途中・ちょうど`>`の直後、`start`から読み始める
+		-     空・最小: `<>`、`<`だけ
+		- 不正なバイト: 16進数でない文字、0x80以上・UTF-8として不正な並び・NUL
+		-       大きさ: 長い中身
+		-   仕様の細則: 中身を字句解析しない、中の`<`は入れ子にならない
+	**/
 	function testHexString() {
 		checkAll(HEX_STRING_CASES);
 	}

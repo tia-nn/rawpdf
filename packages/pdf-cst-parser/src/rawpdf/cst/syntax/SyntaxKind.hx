@@ -3,6 +3,9 @@ package rawpdf.cst.syntax;
 /**
 	構文要素の種別。
 
+	定義済みの種別は、トリビア（定義の`// trivia`の区分）・トークン（`// tokens`の区分）・ノード（`// nodes`の区分）の
+	ちょうど1つに属する。`isTrivia`・`isToken`・`isNode`は、そのうち1つだけが`true`になる。
+
 	呼び出し側は定義済みの値以外をcastで作らない。 `cast` で作った隙間の値に対する判定メソッドの結果は未定義。
 **/
 enum abstract SyntaxKind(Int) {
@@ -55,18 +58,22 @@ enum abstract SyntaxKind(Int) {
 	var StartxrefClause;
 	var ErrorNode;
 
+	/** トリビア（`Whitespace`・`Comment`）なら`true`。 **/
 	public inline function isTrivia() {
 		return 0 <= this && this < cast Integer;
 	}
 
+	/** トークン（`Integer`から`EndOfFile`まで）なら`true`。トリビアとノードは含まない。 **/
 	public inline function isToken() {
 		return (cast Integer) <= this && this < cast Document;
 	}
 
+	/** キーワード（`KwTrue`から`KwF`までの`Kw*`13種）なら`true`。キーワードはすべてトークンでもある。 **/
 	public inline function isKeyword() {
 		return (cast KwTrue) <= this && this < cast HeaderMarker;
 	}
 
+	/** ノード（`Document`から`ErrorNode`まで）なら`true`。 **/
 	public inline function isNode() {
 		return (cast Document) <= this;
 	}

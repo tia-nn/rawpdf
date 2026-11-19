@@ -66,7 +66,17 @@ class GreenNodeTest extends utest.Test {
 		}
 	}
 
-	/** [GreenTrivia.newのdocコメント] トリビア以外の`kind`と、1未満の`length`は例外。 */
+	/**
+		[GreenTrivia.newのdocコメント] トリビア以外の`kind`と、1未満の`length`は例外。
+		観点:
+		-         正常: Whitespace・Comment、長さ1
+		-         境目: 該当なし（字句の切れ目を持たない）
+		-     範囲の端: 長さ1（作れる）と0（例外）、トリビアの区間の外側（Integer・Document）
+		-     空・最小: 長さ0・-1で例外
+		- 不正なバイト: 該当なし（バイト列を受け取らない）
+		-       大きさ: 該当なし（中身を走査しない）
+		-   仕様の細則: 該当なし
+	**/
 	function testTriviaConstruct() {
 		checkConstruct([
 			{name: "Whitespace・長さ1 → 作れる", make: () -> new GreenTrivia(Whitespace, 1), throws: false},
@@ -78,7 +88,18 @@ class GreenNodeTest extends utest.Test {
 		]);
 	}
 
-	/** [GreenToken.newのdocコメント] トークン以外の`kind`と、0未満の`textLength`は例外。 */
+	/**
+		[GreenToken.newのdocコメント] トークン以外の`kind`と、0未満の`textLength`は例外。
+		`fullLength`はtestTokenFullLengthで見る。この表は両方のメソッドの分。
+		観点:
+		-         正常: トリビアなし・1つ・2つの`fullLength`
+		-         境目: 該当なし（字句の切れ目を持たない）
+		-     範囲の端: トークンの区間の両端（Integer・EndOfFile）とその外側（Comment・Document）、`textLength`0と-1
+		-     空・最小: `textLength`0（missing token、トリビアだけのEndOfFile）
+		- 不正なバイト: 該当なし（バイト列を受け取らない）
+		-       大きさ: 該当なし（トリビアの長さを足すだけで、再帰しない）
+		-   仕様の細則: 該当なし
+	**/
 	function testTokenConstruct() {
 		checkConstruct([
 			{name: "トークンの先頭の種別（Integer） → 作れる", make: () -> tok(Integer, 1), throws: false},
@@ -90,7 +111,7 @@ class GreenNodeTest extends utest.Test {
 		]);
 	}
 
-	/** [GreenToken.newのdocコメント] `fullLength`は`textLength`とleadingTriviaの`length`の合計。 */
+	/** [GreenToken.newのdocコメント] `fullLength`は`textLength`とleadingTriviaの`length`の合計。観点の表はtestTokenConstruct。 */
 	function testTokenFullLength() {
 		checkLengths([
 			{name: "トリビアなし → textLength", element: tok(Name, 2), fullLength: 2},
@@ -101,7 +122,18 @@ class GreenNodeTest extends utest.Test {
 		]);
 	}
 
-	/** [GreenNode.newのdocコメント] ノード以外の`kind`は例外。 */
+	/**
+		[GreenNode.newのdocコメント] ノード以外の`kind`は例外。
+		`fullLength`はtestNodeFullLengthで見る。この表は両方のメソッドの分。
+		観点:
+		-         正常: トークンだけ・入れ子・ノードだけを子に持つノードの`fullLength`
+		-         境目: 該当なし（字句の切れ目を持たない）
+		-     範囲の端: ノードの区間の両端（Document・ErrorNode）とその外側（EndOfFile・Whitespace）
+		-     空・最小: 子なし（0）、幅0の子（missing token）を含む
+		- 不正なバイト: 該当なし（バイト列を受け取らない）
+		-       大きさ: 該当なし（子の`fullLength`を足すだけで、再帰しない）
+		-   仕様の細則: 該当なし
+	**/
 	function testNodeConstruct() {
 		checkConstruct([
 			{name: "ノードの先頭の種別（Document） → 作れる", make: () -> node(Document, []), throws: false},
@@ -111,7 +143,7 @@ class GreenNodeTest extends utest.Test {
 		]);
 	}
 
-	/** [GreenNode.newのdocコメント] `fullLength`は子の`fullLength`の合計。 */
+	/** [GreenNode.newのdocコメント] `fullLength`は子の`fullLength`の合計。観点の表はtestNodeConstruct。 */
 	function testNodeFullLength() {
 		checkLengths([
 			{name: "子なし → 0（空の合計）", element: node(Document, []), fullLength: 0},
