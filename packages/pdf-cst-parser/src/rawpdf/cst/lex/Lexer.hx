@@ -245,6 +245,7 @@ class Lexer {
 	}
 
 	/** `pos` の位置のバイト。範囲の終端以降なら `null`。 **/
+	@:allow(rawpdf.cst.lex.TokenSource.isEofComment) // TokenSource から利用する
 	inline function peekPos(pos:Int) {
 		return if (pos >= end) null else bytes.get(pos);
 	}

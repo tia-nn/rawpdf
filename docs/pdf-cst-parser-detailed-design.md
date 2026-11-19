@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-19（`findEndstream`の探索プリミティブを、実行時の環境判定から「純HaxeのBoyer-Moore-Horspoolで始め、必要なら条件コンパイルで切り替える」に直し、基本設計4.3節・11章に合わせた: 6.4節）。2026-11-19（Green木の配列は複製せず、「渡した配列を以後変更しない」を呼び出し側の契約にした: 4.2節）。2026-11-19（Green木の型を実装に合わせた。`Green.hx`を型ごとのモジュール（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）に分け、ノードの子の型を`NodeChild`にした: 2章・4.2節）。2026-11-19（`boundaryDependent`の条件にNameとHeaderMarkerを足した: 6.2節）。2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-19（`%%EOF`パターンを定義した: 6.3節）。2026-11-19（`TokenSource`の`bump`を`next`に改名した。`Lexer.next()`と動詞をそろえる: 6.3節）。2026-11-19（`findEndstream`の探索プリミティブを、実行時の環境判定から「純HaxeのBoyer-Moore-Horspoolで始め、必要なら条件コンパイルで切り替える」に直し、基本設計4.3節・11章に合わせた: 6.4節）。2026-11-19（Green木の配列は複製せず、「渡した配列を以後変更しない」を呼び出し側の契約にした: 4.2節）。2026-11-19（Green木の型を実装に合わせた。`Green.hx`を型ごとのモジュール（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）に分け、ノードの子の型を`NodeChild`にした: 2章・4.2節）。2026-11-19（`boundaryDependent`の条件にNameとHeaderMarkerを足した: 6.2節）。2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -336,7 +336,7 @@ export interface CookedToken {
 export class TokenSource {
   constructor(lexer: Lexer);
   peek(n?: number): CookedToken;  // n=0..2。トリビア透過の先読み（リングバッファ3枠）
-  bump(): CookedToken;
+  next(): CookedToken;   // peek(0)と同じトークンを返し、読む位置を1つ進める
   /** Integer Integer obj / Integer Integer R のパターン先読み（基本設計5.2.1節） */
   atObjHeader(): boolean;
   atReference(): boolean;
@@ -344,6 +344,8 @@ export class TokenSource {
   hasEofCommentInTrivia(): boolean;
 }
 ```
+
+`%%EOF`パターン: Commentトリビアのうち、`%%EOF`で始まり、残りのバイトがすべてwhitespace（6種）であるもの（`%%EOF`ちょうども含む）。Commentが行のどこにあるかは問わない。現実のファイルには`%%EOF`の後ろに空白が付くものが多いため空白は許し、`%%EOFxyz`のような普通のコメントで回復が止まらないよう、空白以外が続くものは含めない（基本設計5.3節の同期トークン）。
 
 ### 6.4 stream境界（`stream-boundary.ts`）
 
