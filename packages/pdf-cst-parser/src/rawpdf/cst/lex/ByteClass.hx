@@ -22,6 +22,7 @@ enum abstract ByteClass(Int) {
 		table;
 	};
 
+	/** @throws haxe.Exception `b` が0〜255の範囲外の場合 **/
 	public static function of(b:Int) {
 		if (0 > b || b > 255) {
 			throw new Exception('ByteClass.of: $b is out of 0..255 range.');

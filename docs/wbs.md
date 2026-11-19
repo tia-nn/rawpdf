@@ -60,7 +60,7 @@
   - 完了条件: literal string（括弧の深さ・エスケープ）とhex stringが切り出せ、閉じない場合は`Unterminated`フラグが立つ。それぞれunitテストあり
   - 前提: M1-3
   - 参照: 基本4.2、詳細6.2
-- [ ] **M1-5 Green層とGreenBuilder**
+- [x] **M1-5 Green層とGreenBuilder**
   - 完了条件: `GreenTrivia`/`GreenToken`/`GreenNode`と、イベント型の`GreenBuilder`（`startNode`/`token`/`missingToken`/`finishNode`/`finish`）がある。手で組んだ木で`fullLength`が子の合計になることをテストで確認
   - 前提: M1-1
   - 参照: 基本5.1、詳細4章
