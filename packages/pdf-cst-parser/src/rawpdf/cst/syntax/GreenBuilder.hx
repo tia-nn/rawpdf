@@ -10,6 +10,8 @@ import rawpdf.cst.syntax.GreenNode.NodeChild;
 
 	要素（トークン・ノード）は、送った時点で開いているノードのうち最も内側のものの子になり、
 	子の順番は送った順になる。どのノードも開いていない時点で送った要素を「最上位の要素」と呼ぶ。
+
+	どのメソッドも、例外を投げた後のビルダーの状態は規定しない。例外を投げたビルダーは捨てて、以後使わない。
 **/
 class GreenBuilder {
 	final children:Array<NodeChild>;
@@ -59,7 +61,16 @@ class GreenBuilder {
 		}
 
 		final nodeChildren = children.splice(node.pos, children.length - node.pos);
-		children.push(new GreenNode(node.kind, nodeChildren));
+		try {
+			children.push(new GreenNode(node.kind, nodeChildren));
+		} catch (e) {
+			// 仕様にはないが一応ロールバックしておく
+			for (child in nodeChildren) {
+				children.push(child);
+			}
+			parents.push(node);
+			throw e;
+		}
 	}
 
 	/**
@@ -81,6 +92,8 @@ class GreenBuilder {
 			throw new Exception("GreenBuilder.finish: nothing was built.");
 		}
 		if (!node.kind.isNode()) {
+			// 仕様にはないが一応ロールバックしておく
+			children.push(node);
 			throw new Exception('GreenBuilder.finish: root must be a node, but was SyntaxKind.${node.kind}.');
 		}
 

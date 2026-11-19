@@ -182,9 +182,11 @@ export class GreenBuilder {
   finishNode(): void;
   token(kind: SyntaxKind, flags: TokenFlags, trivia: GreenTrivia[], textLength: number): void;
   missingToken(kind: SyntaxKind): void;  // 幅ゼロ + Missingフラグ
-  finish(): GreenNode;                   // root（Document）を返す
+  finish(): GreenNode;                   // 最上位のノードを返す（種別は問わない）
 }
 ```
+
+`finish()`は根の種別を検査しない。フルパースでは`Document`、reparseのミニパース（8章 Step 3）では`IndirectObject`・`Segment`などが根になる。`SyntaxTree.root`が`Document`であることはパーサ（7章）が保証する。
 
 ---
 
