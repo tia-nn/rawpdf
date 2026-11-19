@@ -138,7 +138,7 @@ class Lexer {
 		};
 	}
 
-	/** `[pos, pos + len)` が数値なら `Integer`・`Real`、でなければ `Unknown`（Lexer仕様2章）。 **/
+	/** `[pos, pos + len)` が数値なら `Integer`・`Real`、でなければ `Unknown`（Lexerリファレンス2章）。 **/
 	function classifyNumber(pos:Int, len:Int):SyntaxKind {
 		final runEnd = pos + len;
 		var i = pos;
