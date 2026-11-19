@@ -25,6 +25,7 @@ class Lexer {
 
 	var cursor:Int;
 
+	/** `bytes` の `[start, end)` を字句解析する。`start`・`end` を省略すると `bytes` 全体。 **/
 	public function new(bytes:Bytes, ?options:LexerOptions) {
 		this.bytes = bytes;
 		start = options?.start ?? 0;
@@ -34,77 +35,50 @@ class Lexer {
 		cursor = start;
 	}
 
-	inline function peek():Null<Int> {
-		return peekPos(cursor);
-	}
-
-	inline function peekPos(pos:Int) {
-		return if (pos >= end) null else return bytes.get(pos);
-	}
-
-	function startsWithAt(pos:Int, dest:String):Bool {
-		for (c in dest) {
-			if (peekPos(pos++) != c) {
-				return false;
+	/** `cursor` から1トークンを切り出して返す。
+		範囲の終端では幅0の `EndOfFile` を返し続ける。 **/
+	public function next():RawToken {
+		final c = peek();
+		if (c == null) { // EOF
+			return {
+				kind: EndOfFile,
+				flags: TokenFlags.NONE,
+				start: cursor,
+				end: cursor,
 			}
 		}
 
-		return true;
-	}
-
-	function consumeWhitespace() {
-		while (true) {
-			final c = peek();
-			if (c == null || ByteClass.of(c) != Whitespace) {
-				return;
-			}
-			cursor++;
+		return switch ByteClass.of(c) {
+			case Whitespace:
+				nextWhitespace();
+			case Delimiter:
+				nextDelimiter(c);
+			case Regular:
+				nextRegular(c);
 		}
 	}
 
-	function consumeRegular() {
-		while (true) {
-			final c = peek();
-			if (c == null || ByteClass.of(c) != Regular) {
-				return;
-			}
-			cursor++;
+	/** whitespaceが続く限り読み、`Whitespace` を返す。前提: `cursor` の位置のバイトがwhitespace。 **/
+	function nextWhitespace():RawToken {
+		final tokenStart = cursor++;
+		consumeWhitespace();
+
+		return {
+			kind: Whitespace,
+			flags: TokenFlags.NONE,
+			start: tokenStart,
+			end: cursor,
 		}
 	}
 
-	/** `CR` か `LF` が現れるまで `cursor` を進める。 `CR`,`LF` の手前まで進む。 **/
-	function consumeUntilCROrLF() {
-		while (true) {
-			final c = peek();
-			if (c == null || c == "\n".code || c == "\r".code) {
-				return;
-			}
-			cursor++;
-		}
-	}
+	/** delimiter `c` で始まるトークンを読んで返す。前提: `c` は `cursor` の位置のバイト。 **/
+	function nextDelimiter(c:Int):RawToken {
+		final tokenStart = cursor++;
 
-	/** `code` が現れるまで `cursor` を進める。 `code` の位置を含む。
-		`end` まで現れなかったら `TokenFlags.UNTERMINATED` を返す。 **/
-	function consumeTo(code:Int):TokenFlags {
-		while (true) {
-			final c = peek();
-			if (c == null) {
-				return TokenFlags.UNTERMINATED;
-			} else if (c == code) {
-				cursor++;
-				return TokenFlags.NONE;
-			}
-			cursor++;
-		}
-	}
-
-	/** 先頭が `Delimiter` なことがわかっている時に `cursor` を進めて `RawToken` を作成する。
-		先頭が `Delimiter` 以外の場合は `Unknown` トークンになる。 **/
-	function nextDelimiter(tokenStart:Int, lastC:Int):RawToken {
 		var kind:SyntaxKind = Unknown;
 		var flags:TokenFlags = TokenFlags.NONE;
 
-		switch lastC {
+		switch c {
 			case "%".code:
 				kind = if (startsWithAt(cursor, "PDF-")) HeaderMarker else Comment;
 				consumeUntilCROrLF();
@@ -146,29 +120,25 @@ class Lexer {
 		};
 	}
 
-	/** 先頭が `Regular` なことがわかっている時に `cursor` を進めて `RawToken` を作成する。
-		先頭が `Regular` 以外の場合は `Unknown` トークンになる。 **/
-	function nextRegular(tokenStart:Int):RawToken {
+	/** regular runを読み、数値・キーワード・`Unknown` に分類して返す。
+		前提: `c` は `cursor` の位置のバイトで、regular。満たさないと幅0のトークンを返す。 **/
+	function nextRegular(c:Int):RawToken {
+		final tokenStart = cursor++;
 		consumeRegular();
 
-		final c = bytes.get(tokenStart);
+		final kind = if ((c == "+".code || c == "-".code || c == ".".code || (c >= "0".code && c <= "9".code))) {
+			classifyNumber(tokenStart, cursor - tokenStart);
+		} else classifyKeyword(tokenStart, cursor - tokenStart);
 
-		if ((c == "+".code || c == "-".code || c == ".".code || (c >= "0".code && c <= "9".code))) {
-			return {
-				kind: classifyNumber(tokenStart, cursor - tokenStart),
-				flags: TokenFlags.NONE,
-				start: tokenStart,
-				end: cursor,
-			};
-		}
 		return {
-			kind: classifyKeyword(tokenStart, cursor - tokenStart),
+			kind: kind,
 			flags: TokenFlags.NONE,
 			start: tokenStart,
 			end: cursor,
 		};
 	}
 
+	/** `[pos, pos + len)` が数値なら `Integer`・`Real`、でなければ `Unknown`（Lexer仕様2章）。 **/
 	function classifyNumber(pos:Int, len:Int):SyntaxKind {
 		final runEnd = pos + len;
 		var i = pos;
@@ -196,95 +166,125 @@ class Lexer {
 		return if (dots == 1) Real else Integer;
 	}
 
-	function classifyKeyword(tokenStart:Int, len:Int):SyntaxKind {
+	/** `[pos, pos + len)` がキーワードと完全に一致すれば対応する `Kw*`、でなければ `Unknown`。 **/
+	function classifyKeyword(pos:Int, len:Int):SyntaxKind {
 		switch len {
 			case 1:
-				if (startsWithAt(tokenStart, "R")) {
+				if (startsWithAt(pos, "R")) {
 					return KwR;
 				}
-				if (startsWithAt(tokenStart, "n")) {
+				if (startsWithAt(pos, "n")) {
 					return KwN;
 				}
-				if (startsWithAt(tokenStart, "f")) {
+				if (startsWithAt(pos, "f")) {
 					return KwF;
 				}
 			case 3:
-				if (startsWithAt(tokenStart, "obj")) {
+				if (startsWithAt(pos, "obj")) {
 					return KwObj;
 				}
 			case 4:
-				if (startsWithAt(tokenStart, "true")) {
+				if (startsWithAt(pos, "true")) {
 					return KwTrue;
 				}
-				if (startsWithAt(tokenStart, "null")) {
+				if (startsWithAt(pos, "null")) {
 					return KwNull;
 				}
-				if (startsWithAt(tokenStart, "xref")) {
+				if (startsWithAt(pos, "xref")) {
 					return KwXref;
 				}
 			case 5:
-				if (startsWithAt(tokenStart, "false")) {
+				if (startsWithAt(pos, "false")) {
 					return KwFalse;
 				}
 			case 6:
-				if (startsWithAt(tokenStart, "endobj")) {
+				if (startsWithAt(pos, "endobj")) {
 					return KwEndobj;
 				}
-				if (startsWithAt(tokenStart, "stream")) {
+				if (startsWithAt(pos, "stream")) {
 					return KwStream;
 				}
 			case 7:
-				if (startsWithAt(tokenStart, "trailer")) {
+				if (startsWithAt(pos, "trailer")) {
 					return KwTrailer;
 				}
 			case 9:
-				if (startsWithAt(tokenStart, "endstream")) {
+				if (startsWithAt(pos, "endstream")) {
 					return KwEndstream;
 				}
-				if (startsWithAt(tokenStart, "startxref")) {
+				if (startsWithAt(pos, "startxref")) {
 					return KwStartxref;
 				}
 		}
 		return Unknown;
 	}
 
-	public function next():RawToken {
-		final tokenStart = cursor;
+	/** `cursor` の位置のバイト。範囲の終端なら `null`。 **/
+	inline function peek():Null<Int> {
+		return peekPos(cursor);
+	}
 
-		final nc = peek();
-		final c:Int = if (nc == null) { // EOF
-			return {
-				kind: EndOfFile,
-				flags: TokenFlags.NONE,
-				start: tokenStart,
-				end: tokenStart,
+	/** `pos` の位置のバイト。範囲の終端以降なら `null`。 **/
+	inline function peekPos(pos:Int) {
+		return if (pos >= end) null else bytes.get(pos);
+	}
+
+	/** `pos` からのバイト列が `dest` で始まるか。`dest` はASCIIだけを想定する。 **/
+	function startsWithAt(pos:Int, dest:String):Bool {
+		for (c in dest) {
+			if (peekPos(pos++) != c) {
+				return false;
 			}
-		} else {
-			cursor++;
-			nc;
-		};
-		final bc = ByteClass.of(c);
-
-		switch bc {
-			case Whitespace:
-				consumeWhitespace();
-				return {
-					kind: Whitespace,
-					flags: TokenFlags.NONE,
-					start: tokenStart,
-					end: cursor,
-				}
-			case Delimiter:
-				return nextDelimiter(tokenStart, c);
-			case Regular:
-				return nextRegular(tokenStart);
 		}
 
-		return {
-			kind: Unknown,
-			flags: TokenFlags.NONE,
-			start: tokenStart,
-			end: cursor,
+		return true;
+	}
+
+	/** whitespaceが続く限り `cursor` を進める。 **/
+	function consumeWhitespace() {
+		while (true) {
+			final c = peek();
+			if (c == null || ByteClass.of(c) != Whitespace) {
+				return;
+			}
+			cursor++;
+		}
+	}
+
+	/** regular byteが続く限り `cursor` を進める。 **/
+	function consumeRegular() {
+		while (true) {
+			final c = peek();
+			if (c == null || ByteClass.of(c) != Regular) {
+				return;
+			}
+			cursor++;
+		}
+	}
+
+	/** CRかLFの手前まで `cursor` を進める（CR・LFは含まない）。 **/
+	function consumeUntilCROrLF() {
+		while (true) {
+			final c = peek();
+			if (c == null || c == "\n".code || c == "\r".code) {
+				return;
+			}
+			cursor++;
+		}
+	}
+
+	/** `code` まで `cursor` を進める（`code` を含む）。
+		見つからないまま範囲の終端に達したら `UNTERMINATED` を返す。 **/
+	function consumeTo(code:Int):TokenFlags {
+		while (true) {
+			final c = peek();
+			if (c == null) {
+				return TokenFlags.UNTERMINATED;
+			} else if (c == code) {
+				cursor++;
+				return TokenFlags.NONE;
+			}
+			cursor++;
 		}
 	}
 }
