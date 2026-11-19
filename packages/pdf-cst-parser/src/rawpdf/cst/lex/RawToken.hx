@@ -9,11 +9,4 @@ class RawToken {
 	public final flags:TokenFlags;
 	public final start:Int;
 	public final end:Int;
-
-	public function new(kind:SyntaxKind, flags:TokenFlags, start:Int, end:Int) {
-		this.kind = kind;
-		this.flags = flags;
-		this.start = start;
-		this.end = end;
-	}
 }
