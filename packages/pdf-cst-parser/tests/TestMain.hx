@@ -6,6 +6,8 @@ class TestMain {
 			new rawpdf.cst.syntax.TokenFlagsTest(),
 			new rawpdf.cst.syntax.GreenNodeTest(),
 			new rawpdf.cst.syntax.GreenBuilderTest(),
+			new rawpdf.cst.syntax.ByteSpanTest(),
+			new rawpdf.cst.syntax.SyntaxNodeTest(),
 			new rawpdf.cst.lex.ByteClassTest(),
 			new rawpdf.cst.lex.LexerTest(),
 			new rawpdf.cst.lex.TokenSourceTest()

@@ -16,7 +16,10 @@
   // Haxeファイルだけ、手が止まってから少しすると自動で保存されるようにする
   "[haxe]": {
     "files.autoSave": "afterDelay",
-    "files.autoSaveDelay": 800
+    "files.autoSaveDelay": 800,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
   },
   // haxe-checkstyle拡張は、ワークスペースルートからのパスがsourceFoldersで始まるファイルだけを検査する
   // （既定は["src", "Source"]）。コードはpackages/以下にあるので指定する。

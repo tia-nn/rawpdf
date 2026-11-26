@@ -42,31 +42,43 @@ final c:Int = x;           // 検査済みなので、nullSafetyの下でも通�
 
 null safetyが「検査済み」と扱うのは、**null safetyの検査の中だけ**である。変数の型そのものは`Null<T>`のまま変わらない。そのため、型引数を推論する場面では`Null<T>`が使われる。
 
-よく引っかかるのは、ジェネリックな`inline`関数に渡したときである。たとえばJSターゲットの`Std.downcast`は次の形をしている。
+### `Std.downcast`はJSターゲットでnull safetyに引っかかる
+
+ジェネリックな`inline`関数は、本体が呼び出し箇所に展開されてからnull safetyが検査する。JSターゲットの`Std.downcast`はこの形で、返り値は`Null<S>`ではなく`S`である。
 
 ```haxe
-// 標準ライブラリ（js/_std/Std.hx）。返り値がNull<S>ではなくS
+// 標準ライブラリ（js/_std/Std.hx）
 static inline function downcast<T:{}, S:T>(value:T, c:Class<S>):S
 	return if (...) cast value else null;
 ```
 
+展開された`cast value`を、null safetyが`Null safety: Cannot cast nullable value to not nullable type.`として止めることがある。evalターゲットでは`downcast`が`inline`ではないので、同じコードでも止まらない。Haxe 4.3.7で試した結果（受け取る側はどれも`final n:Null<GreenNode> = …`）:
+
+| 渡し方 | 結果 |
+|---|---|
+| `Std.downcast(c, GreenNode)`（`c:GreenNodeChild`の引数） | **エラー** |
+| `Std.downcast(c, GreenNode)`（`c:Null<GreenNodeChild>`をnull検査した後） | **エラー** |
+| `Std.downcast((c : GreenNodeChild), GreenNode)`（`c:GreenNodeChild`の引数） | **エラー** |
+| `Std.downcast((c : GreenNodeChild), GreenNode)`（`c:Null<GreenNodeChild>`をnull検査した後） | 通る |
+| `Std.downcast((c : Null<GreenNodeChild>), GreenNode)`（`c:GreenNodeChild`の引数） | 通る |
+
+つまり、**変数をそのまま渡すと、nullになり得る型でもなり得ない型でも止まる**。型チェック式`(式 : 型)`で型を書き換えたとき（`Null`を外す・付ける）だけ通る。型を変えない型チェック式は、無いのと同じ扱いになる。展開とnull safetyの組み合わせで起きる挙動で、理屈から予想して書くと外れやすい。
+
+確実な書き方は、`downcast`を使わずに、型の検査とキャストを分けることである。
+
 ```haxe
 // 形だけ
-final node = children.pop();     // Null<NodeChild>
-if (node == null) throw …;       // null safetyはここから先を「nullでない」と扱う
-Std.downcast(node, GreenNode);   // それでも T = Null<NodeChild> と推論される
+if (Std.isOfType(c, GreenNode)) {
+	final n:GreenNode = cast c;   // 型を検査した後の、検査しないキャスト
+	…
+}
 ```
 
-`inline`なので、本体が呼び出し箇所に展開されてからnull safetyが検査する。展開された`cast value`は「nullableな値（`T = Null<NodeChild>`）のキャスト」に見え、`Null safety: Cannot cast nullable value to not nullable type.`になる。受け取る変数に`Null<GreenNode>`と注釈を付けても、渡す側の`T`は変わらないので直らない。
+`cast 式`（型を書かない`cast`）は実行時に検査しないキャストなので、直前の`Std.isOfType`が正しさを保証する。
 
-直し方は、渡すところで**型チェック式**`(式 : 型)`を使い、nullでない型として渡すことである。
+もう1つの書き方は、**検査付きキャスト**`cast(式, 型)`である。型が合わなければ実行時に例外を投げ、返り値はnullにならない型なので、null safetyも通る。「`kind`で分かっているので、外れたら契約違反」という場面（Greenの子を`kind`で見分けた後など）に向く。外れたときにnullで続けたい場面は`isOfType`か`downcast`を使う。`(c : Null<GreenNodeChild>)`のように型チェック式で通す方法もあるが、読み手には意図が分かりにくい。
 
-```haxe
-// 形だけ
-final root:Null<GreenNode> = Std.downcast((node : NodeChild), GreenNode);
-```
-
-`(node : NodeChild)`は「この式を`NodeChild`型として扱う」とコンパイラに伝える。nullの検査の後なので、null safetyはこれを許す。`T`は`NodeChild`と推論され、展開された`cast`も通る。`Std.downcast`の返り値はnullになり得る（失敗するとnull）ので、受け取る側は`Null<…>`にしてnullを調べる。
+**どのターゲットで型検査するかに注意**: テスト（`test-interp.hxml`）が通っても、`build.hxml`（JS）では止まることがある。また、エディタ（`display.hxml`）は`TestMain`からたどれるモジュールしか検査しないので、テストからまだ使っていない新しいクラスのエラーは表示されない（[Haxeのコンパイル対象とDCE](haxe-compilation-scope.md)）。
 
 もう1つの注意点: null safetyは**配列の長さを追わない**。`if (a.length != 1) throw …;`の後でも、`a.pop()`は`Null<T>`のままである。実行時には通らない分岐でも、nullの検査は省けない。
 

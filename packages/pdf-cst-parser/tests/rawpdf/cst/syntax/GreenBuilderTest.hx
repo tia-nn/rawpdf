@@ -2,7 +2,7 @@ package rawpdf.cst.syntax;
 
 import haxe.Exception;
 import haxe.ds.ReadOnlyArray;
-import rawpdf.cst.syntax.GreenNode.NodeChild;
+import rawpdf.cst.syntax.GreenNode.GreenNodeChild;
 import utest.Assert;
 
 /** イベントを送ったときに例外を投げるかどうかを確かめるケース。`GreenNodeTest`の`ConstructCase`と同じ形。 */
@@ -73,7 +73,7 @@ class GreenBuilderTest extends utest.Test {
 		return new GreenToken(kind, TokenFlags.NONE, trivia ?? [], textLength);
 	}
 
-	static inline function node(kind:SyntaxKind, children:ReadOnlyArray<NodeChild>) {
+	static inline function node(kind:SyntaxKind, children:ReadOnlyArray<GreenNodeChild>) {
 		return new GreenNode(kind, children);
 	}
 
@@ -82,7 +82,7 @@ class GreenBuilderTest extends utest.Test {
 		トークンなら`flags`・`textLength`・`leadingTrivia`（種類と長さ）、ノードなら子（数と、順に再帰）。
 		`path`は失敗したときに、根からどこをたどったかを示す。
 	**/
-	static function assertSameElement(expected:NodeChild, actual:NodeChild, path:String) {
+	static function assertSameElement(expected:GreenNodeChild, actual:GreenNodeChild, path:String) {
 		Assert.equals(expected.kind, actual.kind, '$path: kind');
 		Assert.equals(expected.fullLength, actual.fullLength, '$path: fullLength');
 		final eToken = Std.downcast(expected, GreenToken);

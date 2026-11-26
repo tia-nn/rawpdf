@@ -25,6 +25,21 @@
 
 名前に意味はなく、Roslynチームがホワイトボードで使ったペンの色が由来である。
 
+### 型名: Greenは`Green*`、Redは`Red*`ではなく`Syntax*`
+
+型名は非対称で、Greenは`GreenNode`/`GreenToken`、Redは`SyntaxNode`/`SyntaxToken`と呼ぶ。理由は「誰がその型を触るか」にある。
+
+- **Redは公開APIの顔**。意味解析・LSPなど、パッケージの外の利用者が触るのはRedだけである。利用者にとってそれは「構文木のノード」そのものなので、いちばん素直な名前`SyntaxNode`を与える。「Red」は内部の実装の都合（2層に分けたこと）を表す言葉で、利用者が知る必要はない
+- **Greenは内部の部品**。触るのはビルダー・インクリメンタルパース・キャッシュなど、2層構成を知っている側だけである。Redと区別する必要があるのはこの側なので、区別のための色の名前を付ける
+
+つまり「普通の名前は利用者が使う方に、修飾した名前は実装者だけが使う方に」という割り当て。既存実装も同じ形をとる。
+
+| 実装 | Green相当 | Red相当 |
+|---|---|---|
+| Roslyn | `GreenNode`（internal） | `SyntaxNode`・`SyntaxToken`・`SyntaxTrivia`（public） |
+| rowan | `GreenNode`・`GreenToken` | `SyntaxNode`・`SyntaxToken` |
+| SwiftSyntax | `RawSyntax` | `Syntax`・`TokenSyntax` |
+
 ## どういう仕組みか
 
 ### Green: 長さだけを持つ不変の木
@@ -38,6 +53,25 @@ Greenのノードは、自分の子と長さ（`fullLength`＝子の長さの合
 Redノードは「Greenノード＋親のRedノード＋自分の絶対開始位置」の組。根のRedは位置0から始まる。子のRedを作るときは、前にいる兄弟の`fullLength`を足して子の位置を出す。
 
 Redは**たどったときに作る**（遅延生成）。誰も見ない部分のRedは作られない。
+
+#### 下へは`green`経由、上へは`parent`で行く
+
+Redノードが参照として持つのは「自分のGreen」と「親のRed」だけで、子のRedは持たない。それでも子をたどれるのは、**子の情報はGreenがすでに持っている**から。
+
+- **下（子）へ**: `this.green.children`を順に見て、Greenの子1つごとに新しいRedを作る。そのとき親には`this`を、位置には「自分の`fullStart`＋それまでの兄弟の`fullLength`の合計」を渡す
+- **上（親）へ**: Greenは親を持てない（同じGreenノードが新旧の木の複数の場所で共有されるため、親を1つに決められない）。だから親への道はRedの`parent`だけが持つ
+
+```
+children():                         // 擬似コード
+  pos = this.fullStart
+  for g in this.green.children:
+    yield Red(g, parent = this, fullStart = pos)
+    pos += g.fullLength
+```
+
+Redが子への参照を持たないのは、遅延生成と両立させるため。子への参照を持たせるには、親を作る時点で子のRedも全部作っておく必要があり、結局木全体のRedを一度に作ることになる。親への参照なら、子を作る時点で親はもう存在しているので、作った順に付けられる。
+
+その代わり、同じ子を2回たどると別のRedオブジェクトが2つできる。同じ要素かどうかは`green`の参照（と位置）で比べる。
 
 ### トリビア
 
@@ -108,7 +142,10 @@ Greenノードの子は「GreenNodeかGreenTokenのどちらか」。これを�
 
 - 方針と、rowanを使わない理由: パーサ基本設計5.1節。rowanはトークンのテキストをUTF-8文字列で持つため、PDFのバイナリを扱えない。このプロジェクトのGreenは**テキストを持たず長さだけ**を持ち、中身は元の`Bytes`から絶対位置で切り出す
 - Green層の型（`GreenTrivia`/`GreenToken`/`GreenNode`）とイベント型ビルダー: 詳細設計4章（WBS M1-5）
-- Red層のAPI（`fullStart`/`start`、`coveringElement`等）: 詳細設計5章（WBS M1-7）
+- Red層のAPI（`fullStart`/`start`、`coveringElement`等）: 詳細設計5章（WBS M1-7）。上の層からの使われ方は、大きく3つの型に分かれる
+  - **上から下へ全部たどる**（`root`→`children()`/`childNodes()`の再帰）: CSTダンプ（詳細9.2節）、逆参照インデックスの構築（意味解析詳細5.2節）、LSPのfoldingRange・semanticTokens
+  - **位置から木を引く**（`coveringElement(offset)`→`parent`で祖先へ）: reparseの差し替え候補の特定（詳細8章 Step 2）、LSPのhover・定義へ移動（カーソル位置から、それを含む`Reference`や`IndirectObject`を探す）
+  - **ノードから位置を出す**（`start`/`end`/`fullStart`、`firstToken()`/`lastToken()`）: 診断の範囲、折りたたみの開始・終了行、ダンプの`Kind@fullStart..end`。`start`は「先頭トークンの`start`」、`end`は「末尾トークンの`end`」なので、`firstToken`/`lastToken`はノードの位置を出す部品でもある
 - トリビアの付与規則と幅不変条件: 基本4.4節（WBS M1-6）
 - 部分木の差し替え（パスコピー）: 基本5.5節、詳細8章（WBS M5-5）
 - `SyntaxKind`はGreen・Redのどちらでも`kind`として使う: [SyntaxKindと`enum abstract`](syntax-kind-enum-abstract.md)

@@ -69,8 +69,8 @@
   - 前提: M1-3, M1-5
   - 参照: 基本4.4、詳細6.3
   - 新しい概念: leading triviaだけを使う付与規則と、幅不変条件（全要素の幅の合計＝ファイルサイズ）
-- [ ] **M1-7 Red層**
-  - 完了条件: `SyntaxTree`/`SyntaxNode`/`SyntaxToken`があり、`fullStart`/`start`/`end`・`children()`・`firstToken()`/`lastToken()`・`coveringElement()`・`bytes()`のテストが通る
+- [x] **M1-7 Red層**
+  - 完了条件: `SyntaxTree`/`SyntaxNode`/`SyntaxToken`があり、`fullStart`/`start`/`end`・`children()`・`firstToken()`/`lastToken()`・`coveringElement()`・`byteSpan()`のテストが通る
   - 前提: M1-5
   - 参照: 基本5.1、詳細5章
   - 新しい概念: **Red木**（親ポインタと絶対位置を持つ軽量ビュー。遅延生成）、`fullStart`と`start`の区別

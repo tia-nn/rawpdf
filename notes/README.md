@@ -11,8 +11,10 @@
 - [バイト分類（ByteClass）](byte-class.md) — 256バイトをWhitespace/Delimiter/Regularに分ける表。トークンの切れ目を決める
 - [Haxeでビットフラグを表す](haxe-bit-flags.md) — 「集合」の値は`abstract(Int)`＋`@:op`＋`has`、`enum abstract`、`haxe.EnumFlags`の3通り。網羅性の前提が違う
 - [stream境界キャッシュ（StreamBodyHint）](stream-boundary-cache.md) — 再パースでstream本体の境界を前回の結果から再利用し、巨大な本体の再走査を避ける
-- [Haxeのnull許容と読み取り専用ビュー](haxe-null-and-readonly-view.md) — `Null<T>`＋`?.`・`??`で省略可能な値、検査済みでも型推論には`Null`が残る（型チェック式で外す）、`@:forward`の`abstract`か関数型で書き換えさせないMap。標準ライブラリだけで書く
+- [Haxeのnull許容と読み取り専用ビュー](haxe-null-and-readonly-view.md) — `Null<T>`＋`?.`・`??`で省略可能な値、検査済みでも型推論には`Null`が残る、JSの`Std.downcast`はnull safetyに止められる（`isOfType`＋`cast`で書く）、`@:forward`の`abstract`か関数型で書き換えさせないMap。標準ライブラリだけで書く
 - [手書きレキサーと最長一致](hand-written-lexer.md) — カーソルと先頭バイトの分岐で1トークンずつ切り出す。終わりは読めるだけ長く読んで決め、必ず1バイト以上進める
 - [イベント型ビルダー](event-builder.md) — パーサは「開始・トークン・終了」を送るだけにし、ビルダーが2本のスタックでGreen木に組む。エラー回復の経路でも木が崩れない
 - [Haxeのモジュールとimport](haxe-modules-and-import.md) — 1ファイル1モジュールに複数の型。モジュールをimportすればサブタイプも見え、同じパッケージはimport不要
 - [PDFの`%%EOF`とファイルの終わり](pdf-eof-marker.md) — 字句はただのコメント。増分更新で何度も現れ、現実のファイルは後ろに空白やゴミが付く。パーサはトリビアの中身を照合して同期トークンにする
+- [Haxeの`Array`と`haxe.ds.Vector`](haxe-array-and-vector.md) — JSでは`Vector`も`map`も`new Array(n)`になる。速さより、配列を作らずに済むか・型をそろえられるかで選ぶ
+- [Haxeのイテレータ](haxe-iterator.md) — `hasNext`/`next`の構造型で、`yield`は無い。返り値を`Iterator`にしておけば、中身を配列から遅延生成へ後で差し替えられる

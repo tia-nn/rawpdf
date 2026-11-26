@@ -3,7 +3,7 @@ package rawpdf.cst.syntax;
 import haxe.Exception;
 import haxe.ds.ReadOnlyArray;
 
-class GreenToken implements GreenNode.NodeChild {
+class GreenToken implements GreenNode.GreenNodeChild {
 	public final kind:SyntaxKind;
 	public final flags:TokenFlags;
 	public final leadingTrivia:ReadOnlyArray<GreenTrivia>;

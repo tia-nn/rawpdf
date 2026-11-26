@@ -2,7 +2,7 @@ package rawpdf.cst.syntax;
 
 import haxe.Exception;
 import haxe.ds.ReadOnlyArray;
-import rawpdf.cst.syntax.GreenNode.NodeChild;
+import rawpdf.cst.syntax.GreenNode.GreenNodeChild;
 
 /**
 	イベント（`startNode`・`token`・`missingToken`・`finishNode`）を順に受け取って、Green木を組み立てる。
@@ -14,7 +14,7 @@ import rawpdf.cst.syntax.GreenNode.NodeChild;
 	どのメソッドも、例外を投げた後のビルダーの状態は規定しない。例外を投げたビルダーは捨てて、以後使わない。
 **/
 class GreenBuilder {
-	final children:Array<NodeChild>;
+	final children:Array<GreenNodeChild>;
 	final parents:Array<{kind:SyntaxKind, pos:Int}>;
 
 	public function new() {
@@ -98,7 +98,7 @@ class GreenBuilder {
 			throw new Exception('GreenBuilder.finish: root must be a node, but was SyntaxKind.${node.kind}.');
 		}
 
-		final node:Null<GreenNode> = Std.downcast((node : NodeChild), GreenNode);
+		final node:Null<GreenNode> = Std.downcast((node : GreenNodeChild), GreenNode);
 		if (node == null) {
 			throw new Exception("GreenBuilder.finish: root has a node kind but is not a GreenNode.");
 		}

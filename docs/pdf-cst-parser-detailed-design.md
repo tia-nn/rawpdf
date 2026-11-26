@@ -1,6 +1,6 @@
 # PDF CSTパーサ 詳細設計ドキュメント
 
-最終更新: 2026-11-19（`%%EOF`パターンを定義した: 6.3節）。2026-11-19（`TokenSource`の`bump`を`next`に改名した。`Lexer.next()`と動詞をそろえる: 6.3節）。2026-11-19（`findEndstream`の探索プリミティブを、実行時の環境判定から「純HaxeのBoyer-Moore-Horspoolで始め、必要なら条件コンパイルで切り替える」に直し、基本設計4.3節・11章に合わせた: 6.4節）。2026-11-19（Green木の配列は複製せず、「渡した配列を以後変更しない」を呼び出し側の契約にした: 4.2節）。2026-11-19（Green木の型を実装に合わせた。`Green.hx`を型ごとのモジュール（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）に分け、ノードの子の型を`NodeChild`にした: 2章・4.2節）。2026-11-19（`boundaryDependent`の条件にNameとHeaderMarkerを足した: 6.2節）。2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
+最終更新: 2026-11-27（名前を実装に合わせた。Greenの子の型`NodeChild`を`GreenNodeChild`に、Redの子の型`SyntaxElement`を`SyntaxNodeChild`に、`SyntaxToken.bytes()`を`byteSpan()`に改名し、Redの`source`をprivateにした: 2章・4.2節・5章）。2026-11-27（Red層を実装に合わせた。`Red.hx`を型ごとのモジュールに分け、`ByteSpan.hx`を足した: 2章。各Redが元のバイト列`source`を持ち、`SyntaxToken.bytes()`はコピーしないビュー`ByteSpan`を返すことにした: 0章・5章。`fullStart`を親が計算して渡すフィールドにし、`firstToken`/`lastToken`が`null`を返す条件、そのときの`start`/`end`、`coveringElement`の境界の規則を定めた: 5章）。2026-11-19（`%%EOF`パターンを定義した: 6.3節）。2026-11-19（`TokenSource`の`bump`を`next`に改名した。`Lexer.next()`と動詞をそろえる: 6.3節）。2026-11-19（`findEndstream`の探索プリミティブを、実行時の環境判定から「純HaxeのBoyer-Moore-Horspoolで始め、必要なら条件コンパイルで切り替える」に直し、基本設計4.3節・11章に合わせた: 6.4節）。2026-11-19（Green木の配列は複製せず、「渡した配列を以後変更しない」を呼び出し側の契約にした: 4.2節）。2026-11-19（Green木の型を実装に合わせた。`Green.hx`を型ごとのモジュール（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`）に分け、ノードの子の型を`NodeChild`にした: 2章・4.2節）。2026-11-19（`boundaryDependent`の条件にNameとHeaderMarkerを足した: 6.2節）。2026-11-19（`ByteClass.of`の例外を、統括設計4章の原則1「契約違反は例外で止めてよい」の一例として参照する形にした: 6.1節）。2026-11-19（Lexerリファレンスは利用者向けの文書にし、未決事項を置かないことにした。Lexerの未決事項は本節に書く: 6.2節）。2026-11-19（Lexer仕様書を`reference/lexer.md`（Lexerリファレンス）に移したので参照を直した: 6.2節）。2026-11-19（テストで`private`なメンバーに触らず、`@:access`も原則として使わないことにした: 10章）。2026-11-18（`ByteClass`の`is*`メソッドを削除し、判定は`==`か`switch`で行うことにした: 6.1節。Lexer仕様書`pdf-cst-lexer-spec.md`への参照を追加: 6.2節）。2026-11-17（`TokenFlags`を`syntax/TokenFlags.hx`に分け、`abstract(Int)`＋`has`（すべて含むか）・`isNone`の形にした: 0章・2章・4.1節。`RawToken`を`lex/RawToken.hx`に分けた（Lexer・TokenSourceの両方が使うため）: 2章。バイト分類を`ByteClass`型＋`of`に変更し、表を非公開にした。`of`は範囲外で例外を投げ、`inline`にしない: 6.1節。`isToken`はトリビアを含まないことを明記: 3章。テストをsrcと同じパッケージ構成に置く: 10章）。2026-11-12（`haxelib.json`を置かないことにした: 2章。実装言語をHaxeに変更: 0章（新設）・2章・3章・10章・11章）。2026-11-11（レビュー指摘を反映: stream本体をレキサー主導で読む方式（6.2・6.4・7.1節）、`findEndstream`の探索終端（6.4節）、強制不安定化条件の一般化と境界キャッシュの再利用条件（8章））
 上位ドキュメント: `pdf-cst-parser-design.md`（基本設計。要件・文法・戦略はそちらが正）
 用途: 実装直前の詳細設計。モジュール構成・型定義・関数シグネチャ・アルゴリズムの段階記述までを定める（実装コードそのものは書かない）。型定義とシグネチャはTS風の擬似表記で書く（0章）。
 
@@ -23,7 +23,7 @@
 | `readonly`フィールド | `final` | |
 | `readonly T[]` | `haxe.ds.ReadOnlyArray<T>` | |
 | `T \| null`、`x?: T` | `Null<T>`、`?x:T` | |
-| `Uint8Array` | `haxe.io.Bytes` | 部分範囲は`(bytes, start, length)`の組で渡し、コピー（`sub`）を避ける |
+| `Uint8Array` | `haxe.io.Bytes` | 部分範囲は`(bytes, start, length)`の組で渡し、コピー（`sub`）を避ける。部分範囲を**返す**APIは`ByteSpan`（5章）を返す |
 | `number`（オフセット・長さ・個数・インデックス） | `Int` | **`Int`は32ビット**。ファイルサイズ2GiB未満を前提とする（10章に記録） |
 | `number`（PDFのInteger/Realの値） | `Float` | PDFのIntegerは10桁（xrefのオフセット等）があり得るため`Int`に入れない。意味解析詳細設計8.1節 |
 | `IterableIterator<T>` | `Iterator<T>` | |
@@ -56,8 +56,11 @@ packages/pdf-cst-parser/
 │   │   ├── TokenFlags.hx  … トークンのビットフラグ（4.1節）      （旧 green.ts の一部）
 │   │   ├── GreenTrivia.hx … Green木のトリビア（4.2節）           （旧 green.ts の一部）
 │   │   ├── GreenToken.hx  … Green木のトークン（4.2節）           （旧 green.ts の一部）
-│   │   ├── GreenNode.hx   … Green木のノードと、子の型NodeChild（4.2節） （旧 green.ts の一部）
-│   │   ├── Red.hx         … Redビュー（SyntaxTree/Node/Token）    （旧 red.ts）
+│   │   ├── GreenNode.hx   … Green木のノードと、子の型GreenNodeChild（4.2節） （旧 green.ts の一部）
+│   │   ├── SyntaxTree.hx  … Redビューの根と元のバイト列（5章）   （旧 red.ts の一部）
+│   │   ├── SyntaxNode.hx  … Redノードと、子の型SyntaxNodeChild（5章） （旧 red.ts の一部）
+│   │   ├── SyntaxToken.hx … Redトークンと、SyntaxTrivia（5章）   （旧 red.ts の一部）
+│   │   ├── ByteSpan.hx    … バイト列の部分範囲ビュー（5章）
 │   │   └── GreenBuilder.hx … GreenBuilder（イベント型構築）      （旧 builder.ts）
 │   ├── lex/
 │   │   ├── ByteClass.hx   … バイト分類テーブル                   （旧 byte-class.ts）
@@ -154,8 +157,8 @@ isNone(): boolean;                // フラグが1つも立っていないか
 Haxeでは型ごとにモジュールを分ける（`GreenTrivia.hx`・`GreenToken.hx`・`GreenNode.hx`。2章）。どれも`class`とする（0章。生成数が多いため）。
 
 ```ts
-/** ノードの子になれる要素（GreenNodeとGreenToken）が共通に持つもの。Haxeでは interface NodeChild（GreenNode.hxに置く） */
-export interface NodeChild {
+/** ノードの子になれる要素（GreenNodeとGreenToken）が共通に持つもの。Haxeでは interface GreenNodeChild（GreenNode.hxに置く） */
+export interface GreenNodeChild {
   readonly kind: SyntaxKind;
   readonly fullLength: number;
 }
@@ -175,12 +178,12 @@ export interface GreenToken {
 
 export interface GreenNode {
   readonly kind: SyntaxKind;
-  readonly children: readonly NodeChild[];   // 実体はGreenNodeかGreenToken
+  readonly children: readonly GreenNodeChild[];   // 実体はGreenNodeかGreenToken
   readonly fullLength: number;   // 子のfullLength合計（構築時に計算・凍結）
 }
 ```
 
-- 子の型を`GreenNode | GreenToken`のunionではなく`NodeChild`にするのは、Haxeに型のunionが無いため。`GreenTrivia`は`NodeChild`を実装しない（ノードの子にならない）。子がノードかトークンかは`kind`（`isNode()`・`isToken()`）で見分け、具体的な型が要る箇所（Red層等）では`Std.downcast`で取り出す。
+- 子の型を`GreenNode | GreenToken`のunionではなく`GreenNodeChild`にするのは、Haxeに型のunionが無いため。`GreenTrivia`は`GreenNodeChild`を実装しない（ノードの子にならない）。子がノードかトークンかは`kind`（`isNode()`・`isToken()`）で見分け、具体的な型が要る箇所（Red層等）では`Std.downcast`で取り出す。
 - **絶対オフセットは持たない**（基本設計5.1節）。`fullLength`の総和＝ファイルサイズが不変条件。
 - トリビアは次トークンの`leadingTrivia`（基本設計4.4節）。`EndOfFile`トークン（textLength=0）が末尾トリビアを受ける。
 - ノードの共有: reparse時に変更されなかったGreenNodeは参照ごと再利用される（===比較が「変更なし」の判定に使える）。v1ではinterning（同形ノードの重複排除）は行わない。
@@ -202,30 +205,34 @@ export class GreenBuilder {
 
 ---
 
-## 5. Red層（`syntax/red.ts`）
+## 5. Red層（`syntax/SyntaxTree.hx`・`SyntaxNode.hx`・`SyntaxToken.hx`・`ByteSpan.hx`）
 
-クラスベース。Redオブジェクトはアクセス時に遅延生成し、キャッシュしない（毎回生成しても軽量。同一性比較は`green`の===で行う）。
+クラスベース。Redオブジェクトはアクセス時に遅延生成し、キャッシュしない（毎回生成しても軽量）。同じ要素かどうかは、`green`の参照（===）と`fullStart`で比べる。Haxeでは型ごとにモジュールを分ける（`SyntaxTree.hx`・`SyntaxNode.hx`・`SyntaxToken.hx`・`ByteSpan.hx`。2章）。Redノード・トークンのコンストラクタは`syntax`パッケージの中からだけ呼べるようにし、利用者は`SyntaxTree.root`からたどって得る。
 
 ```ts
 export class SyntaxTree {
   readonly bytes: Uint8Array;
-  readonly root: SyntaxNode;                     // kind === Document
+  readonly root: SyntaxNode;                     // kind === Document。source = bytes, fullStart = 0
   readonly diagnostics: readonly Diagnostic[];
 }
+
+/** ノードの子になれるRed要素。Haxeでは enum SyntaxNodeChild { Node(node); Token(token); }（SyntaxNode.hxに置く。Green側のGreenNodeChildと対になる名前） */
+export type SyntaxNodeChild = SyntaxNode | SyntaxToken;
 
 export class SyntaxNode {
   readonly kind: SyntaxKind;
   readonly parent: SyntaxNode | null;
   readonly green: GreenNode;
-  get fullStart(): number;   // leading trivia込みの開始（親から累積計算）
-  get start(): number;       // 最初の実トークンのtext開始
-  get end(): number;
-  children(): IterableIterator<SyntaxNode | SyntaxToken>;
+  private readonly source: Uint8Array;  // 元のバイト列。根がSyntaxTree.bytesを受け取り、子を作るときにそのまま渡す
+  readonly fullStart: number;   // leading trivia込みの開始。子を作るときに親が計算して渡す
+  get start(): number;          // firstToken()のstart。部分木にトークンが無ければfullStart
+  get end(): number;            // lastToken()のend。部分木にトークンが無ければfullStart。常に fullStart + green.fullLength に等しい
+  children(): IterableIterator<SyntaxNodeChild>;
   childNodes(): IterableIterator<SyntaxNode>;
   firstToken(): SyntaxToken | null;
   lastToken(): SyntaxToken | null;
-  /** byteOffsetを包含する最内要素（reparse Step1・LSPの位置引きの基盤） */
-  coveringElement(byteOffset: number): SyntaxNode | SyntaxToken;
+  /** byteOffsetを含む最も内側の要素（reparse Step 2・LSPの位置引きの基盤）。境界の規則は下記 */
+  coveringElement(byteOffset: number): SyntaxNodeChild;
 }
 
 export class SyntaxToken {
@@ -233,12 +240,29 @@ export class SyntaxToken {
   readonly flags: TokenFlags;
   readonly parent: SyntaxNode;
   readonly green: GreenToken;  // 同一性比較・上位層のWeakMapキャッシュのキーに使う（semantics詳細設計8.1節）
-  get fullStart(): number; get start(): number; get end(): number;
-  /** 元バッファのsubarrayビュー（ゼロコピー） */
-  bytes(): Uint8Array;
+  private readonly source: Uint8Array; // 親と同じ参照。利用者はbyteSpan()を通して読む
+  readonly fullStart: number;
+  get start(): number;         // fullStart + leadingTriviaの合計
+  get end(): number;           // start + green.textLength
+  /** トークン本体 [start, end) のビュー（コピーしない。トリビアを含まない） */
+  byteSpan(): ByteSpan;
   leadingTrivia(): readonly { kind: SyntaxKind; start: number; length: number }[];
 }
+
+/** 元のバイト列の [start, start + length) を、コピーせずに見せる */
+export class ByteSpan {
+  readonly source: Uint8Array;
+  readonly start: number;
+  readonly length: number;
+  get(i: number): number;      // 0 <= i < length。範囲外は例外（統括設計4章 原則1）
+  toBytes(): Uint8Array;       // 明示的なコピー
+}
 ```
+
+- **`source`を各Redに持たせる理由**: 意味解析のデコード関数（`decodeName(token)`等。意味解析詳細設計8.1節）はトークンだけを受け取るため、トークンが自分で元のバイト列に届く必要がある。根の`SyntaxTree`まで`parent`をたどる方式（O(深さ)）ではなく参照を渡す方式にし、`SyntaxTree`にも依存させない（reparseのミニパースの根にRedをかぶせる場合も動く）。Redはキャッシュしない（意味解析詳細設計8.1節の規則）ので、古い世代のバイト列を指し続けることはない。
+- **`byteSpan()`が`ByteSpan`を返す理由**: Haxeの`Bytes`には部分範囲のビューが無く、`sub`はコピーする（0章）。`StreamBody`トークンは数MBになり得るため、呼び出しのたびのコピーを避ける。デコーダは1バイトずつ読むので`get(i)`で足りる。コピーが要る場面は`toBytes()`で明示する。
+- **トークンが無い部分木**: `firstToken()`・`lastToken()`は、部分木にトークンが1つも無いとき（子が無いノード、トークンを持たないノードだけを子に持つノード）に`null`を返す。幅0のトークン（missing token・`EndOfFile`）はトークンとして数える。返るトークンの`parent`は、そのトークンを直接の子に持つノード。
+- **`coveringElement`の境界の規則**: 各要素はleading trivia込みの半開区間`[fullStart, fullStart + 幅)`を占めるとみなす。トリビアの中の位置はそのトリビアを持つトークンを、トークンの境界ちょうどの位置は後ろのトークンを返す。幅0のトークンはどの位置も含まない。`byteOffset == end`のときは`lastToken()`を返す（ファイル末尾では`EndOfFile`）。部分木にトークンが無いときはノード自身を返す。`byteOffset`が`[fullStart, end]`の外なら例外（統括設計4章 原則1）。
 
 `start`/`fullStart`の区別（TSコンパイラと同じ規約）: 幅不変条件・reparseは`full*`系で扱い、診断・エディタ表示は`start`系を使う。
 
