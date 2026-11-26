@@ -9,7 +9,7 @@ private typedef LengthCase = {
 	/** 失敗したときのメッセージに出す、ケースの説明。 */
 	final name:String;
 
-	final element:GreenNode.NodeChild;
+	final element:GreenNode.GreenNodeChild;
 	final fullLength:Int;
 }
 
@@ -41,7 +41,7 @@ class GreenNodeTest extends utest.Test {
 		return new GreenToken(kind, TokenFlags.NONE, trivia ?? [], textLength);
 	}
 
-	static inline function node(kind:SyntaxKind, children:ReadOnlyArray<GreenNode.NodeChild>) {
+	static inline function node(kind:SyntaxKind, children:ReadOnlyArray<GreenNode.GreenNodeChild>) {
 		return new GreenNode(kind, children);
 	}
 

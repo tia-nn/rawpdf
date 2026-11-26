@@ -3,14 +3,16 @@ package rawpdf.cst.syntax;
 import haxe.Exception;
 import haxe.ds.ReadOnlyArray;
 
-interface NodeChild {
+interface GreenNodeChild {
+	/** Node か Token のみ **/
 	final kind:SyntaxKind;
+
 	final fullLength:Int;
 }
 
-class GreenNode implements NodeChild {
+class GreenNode implements GreenNodeChild {
 	public final kind:SyntaxKind;
-	public final children:ReadOnlyArray<NodeChild>;
+	public final children:ReadOnlyArray<GreenNodeChild>;
 	public final fullLength:Int;
 
 	/**
@@ -19,7 +21,7 @@ class GreenNode implements NodeChild {
 		（変更すると、作った時点で決めた `fullLength` と中身が食い違う）。
 		@throws haxe.Exception `kind` が `Node` でない場合
 	**/
-	public function new(kind:SyntaxKind, children:ReadOnlyArray<NodeChild>) {
+	public function new(kind:SyntaxKind, children:ReadOnlyArray<GreenNodeChild>) {
 		if (!kind.isNode()) {
 			throw new Exception('GreenNode.new: SyntaxKind.${kind} is not Node.');
 		}
